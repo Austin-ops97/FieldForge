@@ -63,10 +63,11 @@ struct CameraPicker: UIViewControllerRepresentable {
 
 struct JobPhotoThumbnail: View {
     let photo: JobPhoto
+    @State private var image: UIImage?
 
     var body: some View {
         ZStack {
-            if let image = MediaFiles.image(for: photo) {
+            if let image {
                 Image(uiImage: image)
                     .resizable()
                     .scaledToFill()
@@ -86,6 +87,13 @@ struct JobPhotoThumbnail: View {
                 .strokeBorder(ForgeTheme.border, lineWidth: 1)
         }
         .accessibilityLabel(photo.caption.isEmpty ? "Job photo" : photo.caption)
+        .task(id: photo.fileName) {
+            guard photo.fileName.isEmpty == false else {
+                image = nil
+                return
+            }
+            image = await MediaFiles.image(fileName: photo.fileName, maxPixel: 360)
+        }
     }
 }
 
@@ -95,12 +103,13 @@ struct PhotoViewer: View {
     var onDelete: () -> Void
 
     @State private var confirmDelete = false
+    @State private var image: UIImage?
 
     var body: some View {
         NavigationStack {
             VStack(spacing: ForgeTheme.Space.s) {
                 Group {
-                    if let image = MediaFiles.image(for: photo) {
+                    if let image {
                         Image(uiImage: image)
                             .resizable()
                             .scaledToFit()
@@ -146,6 +155,10 @@ struct PhotoViewer: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("The picture is removed from this job on the iPhone.")
+            }
+            .task(id: photo.fileName) {
+                guard photo.fileName.isEmpty == false else { return }
+                image = await MediaFiles.image(fileName: photo.fileName, maxPixel: 1400)
             }
         }
     }
@@ -353,8 +366,7 @@ struct VoiceNotesSection: View {
                     .font(ForgeType.caption)
                     .foregroundStyle(.secondary)
                 Button("Open Settings") {
-                    guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-                    UIApplication.shared.open(url)
+                    ForgeSystem.openSettings()
                 }
                 .buttonStyle(.borderless)
                 .frame(minHeight: 44, alignment: .leading)
@@ -379,6 +391,7 @@ struct VoiceNotesSection: View {
                     context.delete(noteToDelete)
                     job.needsSync = true
                     try? context.save()
+                    ForgeHaptic.delete()
                 }
                 noteToDelete = nil
             }

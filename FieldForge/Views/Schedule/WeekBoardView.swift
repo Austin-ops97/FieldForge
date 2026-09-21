@@ -17,6 +17,7 @@ struct WeekBoardView: View {
     }
 
     var body: some View {
+        let grouped = jobsByDay
         List {
             Section {
                 Text(rangeTitle)
@@ -26,7 +27,7 @@ struct WeekBoardView: View {
                     .foregroundStyle(.secondary)
             }
             ForEach(days, id: \.self) { day in
-                let dayJobs = jobs.filter { calendar.isDate($0.scheduledAt, inSameDayAs: day) }
+                let dayJobs = grouped[calendar.startOfDay(for: day)] ?? []
                 Section {
                     if dayJobs.isEmpty {
                         Text("Nothing scheduled")
@@ -77,6 +78,17 @@ struct WeekBoardView: View {
         let name = day.formatted(.dateTime.weekday(.wide).month(.abbreviated).day())
         if calendar.isDateInToday(day) { return "\(name) · Today" }
         return name
+    }
+
+    private var jobsByDay: [Date: [Job]] {
+        let start = weekStart
+        guard let end = calendar.date(byAdding: .day, value: 7, to: start) else { return [:] }
+        var grouped: [Date: [Job]] = [:]
+        for job in jobs where job.scheduledAt >= start && job.scheduledAt < end {
+            let day = calendar.startOfDay(for: job.scheduledAt)
+            grouped[day, default: []].append(job)
+        }
+        return grouped
     }
 
     private func shiftWeek(_ value: Int) {

@@ -13,6 +13,7 @@ final class AppLock {
     private let grace: TimeInterval = 60
     private var backgroundedAt: Date?
     private var authenticating = false
+    private var unlockInFlight = false
 
     var isEnabled: Bool
     var isLocked: Bool
@@ -55,6 +56,9 @@ final class AppLock {
     }
 
     func unlock() async {
+        guard unlockInFlight == false else { return }
+        unlockInFlight = true
+        defer { unlockInFlight = false }
         let result = await authenticate(reason: "Unlock FieldForge.")
         if result.success {
             isLocked = false
@@ -67,7 +71,8 @@ final class AppLock {
             failureMessage = nil
             backgroundedAt = nil
         } else {
-            failureMessage = result.message
+            isLocked = true
+            failureMessage = result.message ?? "Tap Unlock to use Face ID, Touch ID, or the passcode."
         }
     }
 
@@ -126,6 +131,8 @@ final class AppLock {
             return nil
         case .passcodeNotSet:
             return "Turn on a passcode for this iPhone, then try App Lock again."
+        case .biometryNotEnrolled, .biometryNotAvailable:
+            return "Use the device passcode to unlock FieldForge."
         case .biometryLockout:
             return "Face ID is locked. Use the passcode to unlock FieldForge."
         default:

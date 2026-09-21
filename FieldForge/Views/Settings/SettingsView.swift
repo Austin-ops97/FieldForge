@@ -1,6 +1,5 @@
 import SwiftData
 import SwiftUI
-import UIKit
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
@@ -50,6 +49,7 @@ private struct SettingsForm: View {
     @State private var reminderCount = 0
     @State private var lockBusy = false
     @State private var remindersBusy = false
+    @State private var busy: String?
 
     private var canSave: Bool {
         businessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -169,7 +169,26 @@ private struct SettingsForm: View {
             }
         }
         .safeAreaInset(edge: .bottom) {
-            FormSaveBar(enabled: canSave, action: saveProfile)
+            FormSaveBar(enabled: canSave && busy == nil, action: saveProfile)
+        }
+        .disabled(busy != nil)
+        .overlay {
+            if let busy {
+                ZStack {
+                    Color.black.opacity(0.12).ignoresSafeArea()
+                    VStack(spacing: 12) {
+                        ProgressView()
+                            .tint(ForgeTheme.ink)
+                        Text(busy)
+                            .font(ForgeType.secondary)
+                            .foregroundStyle(.primary)
+                    }
+                    .padding(ForgeTheme.Space.l)
+                    .background(.regularMaterial, in: RoundedRectangle(cornerRadius: ForgeTheme.Radius.m, style: .continuous))
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(busy)
+            }
         }
         .onAppear(perform: load)
         .confirmationDialog(
@@ -226,7 +245,8 @@ private struct SettingsForm: View {
                 if let url = urls.first {
                     inspectBackup(url)
                 }
-            case .failure:
+            case .failure(let error):
+                if Self.cancelledPicker(error) { return }
                 presentNotice("Couldn’t restore", "That file couldn’t be opened.")
             }
         }
@@ -239,10 +259,17 @@ private struct SettingsForm: View {
     }
 
     private func backupShop() {
-        do {
-            shareURL = try ShopBackup.makeZip(in: context)
-        } catch {
-            presentNotice("Couldn’t make the backup", error.localizedDescription)
+        guard busy == nil else { return }
+        busy = "Making backup…"
+        Task {
+            defer { busy = nil }
+            do {
+                shareURL = try await ShopBackup.makeZip(in: context)
+                ForgeHaptic.success()
+            } catch {
+                ForgeHaptic.warning()
+                presentNotice("Couldn’t make the backup", error.localizedDescription)
+            }
         }
     }
 
@@ -256,6 +283,9 @@ private struct SettingsForm: View {
             return
         }
         lockOn = appLock.isEnabled
+        if enabled {
+            ForgeHaptic.success()
+        }
     }
 
     private func setReminders(_ enabled: Bool) async {
@@ -266,6 +296,7 @@ private struct SettingsForm: View {
             reminderCount = try await InvoiceReminders.setEnabled(enabled, in: context)
             remindersOn = InvoiceReminders.isEnabled
             if enabled {
+                ForgeHaptic.success()
                 presentNotice("Reminders on", reminderCaption)
             }
         } catch let error as InvoiceReminders.EnableFailure {
@@ -295,18 +326,21 @@ private struct SettingsForm: View {
     }
 
     private func openSystemSettings() {
-        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
-        UIApplication.shared.open(url)
+        ForgeSystem.openSettings()
     }
 
     private func inspectBackup(_ url: URL) {
-        Task { @MainActor in
+        guard busy == nil else { return }
+        busy = "Reading backup…"
+        Task {
             do {
-                let preview = try ShopBackup.inspect(url)
-                try? await Task.sleep(for: .milliseconds(400))
+                let preview = try await ShopBackup.inspect(url)
+                try? await Task.sleep(for: .milliseconds(350))
+                busy = nil
                 pendingRestore = preview
                 confirmRestore = true
             } catch {
+                busy = nil
                 pendingRestore = nil
                 presentNotice("Couldn’t restore", error.localizedDescription)
             }
@@ -334,16 +368,30 @@ private struct SettingsForm: View {
     }
 
     private func applyRestore() {
-        guard let preview = pendingRestore else { return }
+        guard let preview = pendingRestore, busy == nil else { return }
         pendingRestore = nil
-        do {
-            let report = try ShopBackup.restore(preview, into: profile, in: context)
-            reloadForm()
-            presentNotice("Restored", report.message)
-            Task { reminderCount = await InvoiceReminders.reschedule(in: context) }
-        } catch {
-            presentNotice("Couldn’t restore", error.localizedDescription)
+        busy = "Restoring…"
+        Task {
+            defer { busy = nil }
+            do {
+                let report = try await ShopBackup.restore(preview, into: profile, in: context)
+                reloadForm()
+                reminderCount = await InvoiceReminders.reschedule(in: context)
+                ForgeHaptic.success()
+                presentNotice("Restored", report.message)
+            } catch {
+                ForgeHaptic.warning()
+                presentNotice("Couldn’t restore", error.localizedDescription)
+            }
         }
+    }
+
+    private static func cancelledPicker(_ error: Error) -> Bool {
+        if let cocoa = error as? CocoaError, cocoa.code == .userCancelled {
+            return true
+        }
+        let ns = error as NSError
+        return ns.domain == NSCocoaErrorDomain && ns.code == NSUserCancelledError
     }
 
     private func reloadForm() {

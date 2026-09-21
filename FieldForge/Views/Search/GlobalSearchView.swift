@@ -1,6 +1,17 @@
 import SwiftData
 import SwiftUI
 
+private struct SearchMatches {
+    var clients: [Client]
+    var jobs: [Job]
+    var quotes: [Quote]
+    var invoices: [Invoice]
+
+    var isEmpty: Bool {
+        clients.isEmpty && jobs.isEmpty && quotes.isEmpty && invoices.isEmpty
+    }
+}
+
 struct GlobalSearchView: View {
     @Query(sort: \Client.name) private var clients: [Client]
     @Query(sort: \Job.scheduledAt, order: .reverse) private var jobs: [Job]
@@ -48,15 +59,17 @@ struct GlobalSearchView: View {
         }
     }
 
-    private var isEmptyResult: Bool {
-        query.isEmpty == false
-            && matchedClients.isEmpty
-            && matchedJobs.isEmpty
-            && matchedQuotes.isEmpty
-            && matchedInvoices.isEmpty
+    private var currentMatches: SearchMatches {
+        SearchMatches(
+            clients: matchedClients,
+            jobs: matchedJobs,
+            quotes: matchedQuotes,
+            invoices: matchedInvoices
+        )
     }
 
     var body: some View {
+        let matches = currentMatches
         Group {
             if query.isEmpty {
                 ContentUnavailableView(
@@ -64,7 +77,7 @@ struct GlobalSearchView: View {
                     systemImage: "magnifyingglass",
                     description: Text("Find a client, job, quote, or invoice number.")
                 )
-            } else if isEmptyResult {
+            } else if matches.isEmpty {
                 ContentUnavailableView(
                     "No matches",
                     systemImage: "magnifyingglass",
@@ -72,7 +85,7 @@ struct GlobalSearchView: View {
                 )
             } else {
                 List {
-                    resultSection("Clients", rows: matchedClients) { client in
+                    resultSection("Clients", rows: matches.clients) { client in
                         NavigationLink(value: client.forgeRoute) {
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(client.name)
@@ -85,7 +98,7 @@ struct GlobalSearchView: View {
                             .padding(.vertical, 4)
                         }
                     }
-                    resultSection("Jobs", rows: matchedJobs) { job in
+                    resultSection("Jobs", rows: matches.jobs) { job in
                         NavigationLink(value: job.forgeRoute) {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(job.title)
@@ -99,7 +112,7 @@ struct GlobalSearchView: View {
                             .padding(.vertical, 4)
                         }
                     }
-                    resultSection("Quotes", rows: matchedQuotes) { quote in
+                    resultSection("Quotes", rows: matches.quotes) { quote in
                         NavigationLink(value: quote.forgeRoute) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 3) {
@@ -116,7 +129,7 @@ struct GlobalSearchView: View {
                             .padding(.vertical, 4)
                         }
                     }
-                    resultSection("Invoices", rows: matchedInvoices) { invoice in
+                    resultSection("Invoices", rows: matches.invoices) { invoice in
                         NavigationLink(value: invoice.forgeRoute) {
                             HStack {
                                 VStack(alignment: .leading, spacing: 3) {

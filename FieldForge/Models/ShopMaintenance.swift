@@ -24,11 +24,16 @@ enum BusinessMigration {
 
 @MainActor
 enum OperationalData {
-    static func removeShopWork(in context: ModelContext, save: Bool = true) {
+    static func mediaFileNames(in context: ModelContext) -> [String] {
         let photos = (try? context.fetch(FetchDescriptor<JobPhoto>())) ?? []
-        photos.forEach { MediaFiles.remove($0.fileName) }
         let notes = (try? context.fetch(FetchDescriptor<VoiceNote>())) ?? []
-        notes.forEach { MediaFiles.remove($0.fileName) }
+        return photos.map(\.fileName) + notes.map(\.fileName)
+    }
+
+    static func removeShopWork(in context: ModelContext, save: Bool = true, deleteFiles: Bool = true) {
+        if deleteFiles {
+            mediaFileNames(in: context).forEach { MediaFiles.remove($0) }
+        }
 
         let clients = (try? context.fetch(FetchDescriptor<Client>())) ?? []
         let ownedJobIDs = Set(clients.flatMap { $0.jobs.map(\.persistentModelID) })

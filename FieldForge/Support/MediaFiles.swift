@@ -1,3 +1,4 @@
+import ImageIO
 import UIKit
 
 enum MediaFiles {
@@ -71,10 +72,41 @@ enum MediaFiles {
         try? FileManager.default.removeItem(at: url(for: fileName))
     }
 
-    static func image(for photo: JobPhoto) -> UIImage? {
-        guard photo.fileName.isEmpty == false else { return nil }
-        return UIImage(contentsOfFile: url(for: photo.fileName).path)
+    static func image(fileName: String, maxPixel: Int) async -> UIImage? {
+        guard fileName.isEmpty == false else { return nil }
+        let key = "\(maxPixel)-\(fileName)" as NSString
+        if let cached = thumbnailCache.object(forKey: key) {
+            return cached
+        }
+        let url = url(for: fileName)
+        let rendered = await Task.detached(priority: .utility) {
+            downsampledImage(at: url, maxPixel: maxPixel)
+        }.value
+        if let rendered {
+            thumbnailCache.setObject(rendered, forKey: key)
+        }
+        return rendered
     }
+
+    nonisolated static func downsampledImage(at url: URL, maxPixel: Int) -> UIImage? {
+        guard FileManager.default.fileExists(atPath: url.path) else { return nil }
+        let sourceOptions = [kCGImageSourceShouldCache: false] as CFDictionary
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, sourceOptions) else { return nil }
+        let options = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceShouldCacheImmediately: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixel
+        ] as CFDictionary
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options) else { return nil }
+        return UIImage(cgImage: image)
+    }
+
+    private static let thumbnailCache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.countLimit = 96
+        return cache
+    }()
 
     private static func directory() -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

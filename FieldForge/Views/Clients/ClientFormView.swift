@@ -13,6 +13,7 @@ struct ClientFormView: View {
     @State private var email = ""
     @State private var address = ""
     @State private var notes = ""
+    @State private var didLoad = false
 
     private var canSave: Bool {
         name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -51,6 +52,8 @@ struct ClientFormView: View {
     }
 
     private func load() {
+        guard didLoad == false else { return }
+        didLoad = true
         guard let client else { return }
         name = client.name
         phone = client.phone

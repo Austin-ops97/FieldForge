@@ -141,6 +141,7 @@ struct InvoiceDetailView: View {
                 } else {
                     Button {
                         QuoteActions.markPaid(invoice, in: context)
+                        ForgeHaptic.success()
                     } label: {
                         Label("Mark Paid", systemImage: "checkmark.circle.fill")
                             .font(.headline)

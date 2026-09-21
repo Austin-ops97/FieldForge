@@ -87,6 +87,8 @@ App Lock, overdue reminders, and About are in that same Settings screen. Lock an
 
 First launch puts **Load Riverside Plumbing demo** at the top. **Continue** still needs a company name and your name, and starts an empty shop with a price book.
 
+On a phone, Accept quote, Mark Paid, a finished backup or restore, turning on App Lock, and turning on overdue reminders give a short success tap. Deleting a photo or voice note does too. Backup and Restore show a progress state while the file is built off the main thread. Job photos in the grid use small thumbnails. A denied camera, photo library, or microphone explains how to open Settings. Cancelling Restore does nothing to the shop.
+
 ## Out of scope
 
 GPS, SMS, QuickBooks, Stripe, Apple Watch, Mac, AI estimates, accounts, and any network service. There is no paywall in the app.

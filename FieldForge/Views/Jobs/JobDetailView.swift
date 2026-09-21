@@ -1,4 +1,5 @@
 import AVFoundation
+import Photos
 import PhotosUI
 import SwiftData
 import SwiftUI
@@ -6,6 +7,7 @@ import UIKit
 
 struct JobDetailView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @Bindable var job: Job
 
     @State private var showEdit = false
@@ -13,6 +15,8 @@ struct JobDetailView: View {
     @State private var photoItem: PhotosPickerItem?
     @State private var showCamera = false
     @State private var cameraMessage: String?
+    @State private var cameraDenied = false
+    @State private var libraryDenied = false
     @State private var quoteToOpen: Quote?
     @State private var showNewQuote = false
 
@@ -98,12 +102,33 @@ struct JobDetailView: View {
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
                 .buttonStyle(.borderless)
-                PhotosPicker(selection: $photoItem, matching: .images) {
-                    Label("Choose photo", systemImage: "photo")
-                        .font(ForgeType.rowTitle)
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                if libraryDenied {
+                    Text("Photo library access is off. Turn it on in Settings to attach pictures.")
+                        .font(ForgeType.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Open Settings") {
+                        ForgeSystem.openSettings()
+                    }
+                    .buttonStyle(.borderless)
+                    .frame(minHeight: 44, alignment: .leading)
+                } else {
+                    PhotosPicker(selection: $photoItem, matching: .images) {
+                        Label("Choose photo", systemImage: "photo")
+                            .font(ForgeType.rowTitle)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                    }
+                    .buttonStyle(.borderless)
                 }
-                .buttonStyle(.borderless)
+                if cameraDenied {
+                    Text("Camera access is off. Turn it on in Settings to photograph the job.")
+                        .font(ForgeType.caption)
+                        .foregroundStyle(.secondary)
+                    Button("Open Settings") {
+                        ForgeSystem.openSettings()
+                    }
+                    .buttonStyle(.borderless)
+                    .frame(minHeight: 44, alignment: .leading)
+                }
             }
 
             VoiceNotesSection(job: job)
@@ -169,11 +194,9 @@ struct JobDetailView: View {
             set: { if $0 == false { cameraMessage = nil } }
         )) {
             Button("OK", role: .cancel) {}
-            if AVCaptureDevice.authorizationStatus(for: .video) == .denied {
+            if cameraDenied {
                 Button("Open Settings") {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
+                    ForgeSystem.openSettings()
                 }
             }
         } message: {
@@ -182,6 +205,10 @@ struct JobDetailView: View {
         .onChange(of: photoItem) { _, item in
             guard let item else { return }
             Task { await importLibraryPhoto(item) }
+        }
+        .onAppear(perform: refreshCaptureAccess)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { refreshCaptureAccess() }
         }
         .navigationDestination(isPresented: $showNewQuote) {
             if let quoteToOpen {
@@ -197,10 +224,12 @@ struct JobDetailView: View {
         }
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
+            cameraDenied = false
             showCamera = true
         case .notDetermined:
             AVCaptureDevice.requestAccess(for: .video) { allowed in
                 Task { @MainActor in
+                    cameraDenied = allowed == false
                     if allowed {
                         showCamera = true
                     } else {
@@ -209,8 +238,16 @@ struct JobDetailView: View {
                 }
             }
         default:
+            cameraDenied = true
             cameraMessage = "Camera access is off. Turn it on in Settings to photograph the job."
         }
+    }
+
+    private func refreshCaptureAccess() {
+        let camera = AVCaptureDevice.authorizationStatus(for: .video)
+        cameraDenied = camera == .denied || camera == .restricted
+        let library = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        libraryDenied = library == .denied || library == .restricted
     }
 
     private func importLibraryPhoto(_ item: PhotosPickerItem) async {
@@ -247,6 +284,7 @@ struct JobDetailView: View {
         context.delete(photo)
         job.needsSync = true
         try? context.save()
+        ForgeHaptic.delete()
     }
 }
 

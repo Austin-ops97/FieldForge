@@ -14,45 +14,16 @@ struct TodayView: View {
 
     private var shop: BusinessProfile? { shops.first }
 
-    private var openInvoices: [Invoice] {
-        invoices
-            .filter { $0.isOpen }
-            .sorted { $0.dueAt < $1.dueAt }
-    }
-
-    private var overdueInvoices: [Invoice] {
-        openInvoices.filter { $0.displayStatus == .overdue }
-    }
-
-    private var amountOwed: Decimal {
-        openInvoices.reduce(Decimal(0)) { partial, invoice in
-            guard let quote = invoice.quote else { return partial }
-            return partial + MoneyMath.summarize(items: quote.lineItems, taxBasisPoints: quote.taxBasisPoints).total
-        }
-    }
-
-    private var todaysJobs: [Job] {
-        jobs.filter { Calendar.current.isDateInToday($0.scheduledAt) }
-    }
-
-    private var upcomingJobs: [Job] {
-        let calendar = Calendar.current
-        let start = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now)) ?? .now
-        let end = calendar.date(byAdding: .day, value: 8, to: start) ?? start
-        return jobs.filter { job in
-            job.scheduledAt >= start && job.scheduledAt < end && job.status != .done
-        }
-    }
-
     var body: some View {
+        let board = makeBoard()
         NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: ForgeTheme.Space.m) {
                     shopHeader
-                    ledgerCard
+                    ledgerCard(board)
                     actionRow
-                    jobSection(title: "On the board", jobs: todaysJobs, empty: "Nothing on the board today.")
-                    jobSection(title: "Coming up", jobs: upcomingJobs, empty: "No jobs in the next week.")
+                    jobSection(title: "On the board", jobs: board.todayJobs, empty: "Nothing on the board today.")
+                    jobSection(title: "Coming up", jobs: board.upcomingJobs, empty: "No jobs in the next week.")
                 }
                 .padding(.horizontal, ForgeTheme.Space.s)
                 .padding(.bottom, ForgeTheme.Space.l)
@@ -111,7 +82,7 @@ struct TodayView: View {
         return "\(shop.ownerName) · \(shop.trade)"
     }
 
-    private var ledgerCard: some View {
+    private func ledgerCard(_ board: TodayBoard) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             NavigationLink {
                 MoneyOwedView()
@@ -127,12 +98,12 @@ struct TodayView: View {
                             .font(.footnote.weight(.semibold))
                     }
                     .foregroundStyle(.white.opacity(0.68))
-                    Text(FieldFormat.money(amountOwed))
+                    Text(FieldFormat.money(board.owed))
                         .font(ForgeType.heroMoney)
                         .foregroundStyle(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                    Text(openInvoiceCaption)
+                    Text(openInvoiceCaption(board))
                         .font(ForgeType.secondary)
                         .foregroundStyle(.white.opacity(0.72))
                 }
@@ -143,12 +114,12 @@ struct TodayView: View {
             .buttonStyle(ForgePressStyle())
             .accessibilityHint("Opens unpaid invoices")
 
-            if overdueInvoices.isEmpty == false {
+            if board.overdue.isEmpty == false {
                 Rectangle()
                     .fill(.white.opacity(0.14))
                     .frame(height: 1)
                     .padding(.horizontal, ForgeTheme.Space.s)
-                ForEach(overdueInvoices) { invoice in
+                ForEach(board.overdue) { invoice in
                     NavigationLink(value: invoice.forgeRoute) {
                         OverdueLedgerRow(invoice: invoice)
                     }
@@ -159,13 +130,44 @@ struct TodayView: View {
         .background(ForgeTheme.ink, in: RoundedRectangle(cornerRadius: ForgeTheme.Radius.l, style: .continuous))
     }
 
-    private var openInvoiceCaption: String {
-        let open = openInvoices.count == 1 ? "1 open invoice" : "\(openInvoices.count) open invoices"
-        guard overdueInvoices.isEmpty == false else {
-            return openInvoices.isEmpty ? "Nothing outstanding" : open
+    private func openInvoiceCaption(_ board: TodayBoard) -> String {
+        let open = board.openCount == 1 ? "1 open invoice" : "\(board.openCount) open invoices"
+        guard board.overdue.isEmpty == false else {
+            return board.openCount == 0 ? "Nothing outstanding" : open
         }
-        let late = overdueInvoices.count == 1 ? "1 overdue" : "\(overdueInvoices.count) overdue"
+        let late = board.overdue.count == 1 ? "1 overdue" : "\(board.overdue.count) overdue"
         return "\(late) · \(open)"
+    }
+
+    private func makeBoard() -> TodayBoard {
+        let calendar = Calendar.current
+        let tomorrow = calendar.date(byAdding: .day, value: 1, to: calendar.startOfDay(for: .now)) ?? .now
+        let upcomingEnd = calendar.date(byAdding: .day, value: 8, to: tomorrow) ?? tomorrow
+        var todayJobs: [Job] = []
+        var upcomingJobs: [Job] = []
+        for job in jobs {
+            if calendar.isDateInToday(job.scheduledAt) {
+                todayJobs.append(job)
+            } else if job.scheduledAt >= tomorrow && job.scheduledAt < upcomingEnd && job.status != .done {
+                upcomingJobs.append(job)
+            }
+        }
+        var owed = Decimal(0)
+        var open: [Invoice] = []
+        for invoice in invoices where invoice.isOpen {
+            open.append(invoice)
+            if let quote = invoice.quote {
+                owed += MoneyMath.summarize(items: quote.lineItems, taxBasisPoints: quote.taxBasisPoints).total
+            }
+        }
+        open.sort { $0.dueAt < $1.dueAt }
+        return TodayBoard(
+            owed: owed,
+            openCount: open.count,
+            overdue: open.filter { $0.displayStatus == .overdue },
+            todayJobs: todayJobs,
+            upcomingJobs: upcomingJobs
+        )
     }
 
     private var actionRow: some View {
@@ -261,6 +263,14 @@ struct TodayView: View {
         }
         self.pendingRoute = nil
     }
+}
+
+private struct TodayBoard {
+    var owed: Decimal
+    var openCount: Int
+    var overdue: [Invoice]
+    var todayJobs: [Job]
+    var upcomingJobs: [Job]
 }
 
 private enum TodayRoute {

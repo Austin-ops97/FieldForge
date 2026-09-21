@@ -11,23 +11,16 @@ struct ReportsView: View {
 
     private var calendar: Calendar { Calendar.current }
 
-    private var openInvoices: [Invoice] {
-        invoices.filter(\.isOpen)
-    }
-
-    private var overdueInvoices: [Invoice] {
-        openInvoices.filter { $0.displayStatus == .overdue }
-    }
-
     var body: some View {
+        let money = moneySnapshot
         ScrollView {
             VStack(alignment: .leading, spacing: ForgeTheme.Space.m) {
-                ledger
+                ledger(money)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
-                    metricCard(title: "Paid this week", value: FieldFormat.money(paid(in: weekInterval)))
-                    metricCard(title: "Paid this month", value: FieldFormat.money(paid(in: monthInterval)))
-                    metricCard(title: "Done this week", value: "\(completed(in: weekInterval))")
-                    metricCard(title: "Done this month", value: "\(completed(in: monthInterval))")
+                    metricCard(title: "Paid this week", value: FieldFormat.money(money.paidWeek))
+                    metricCard(title: "Paid this month", value: FieldFormat.money(money.paidMonth))
+                    metricCard(title: "Done this week", value: "\(money.doneWeek)")
+                    metricCard(title: "Done this month", value: "\(money.doneMonth)")
                 }
                 VStack(spacing: ForgeTheme.Space.xs) {
                     Button {
@@ -71,23 +64,23 @@ struct ReportsView: View {
         )
     }
 
-    private var ledger: some View {
+    private func ledger(_ money: MoneySnapshot) -> some View {
         VStack(alignment: .leading, spacing: ForgeTheme.Space.xxs) {
             Text("Unpaid")
                 .font(ForgeType.overline)
                 .textCase(.uppercase)
                 .tracking(0.6)
                 .foregroundStyle(.white.opacity(0.68))
-            Text(FieldFormat.money(sum(openInvoices)))
+            Text(FieldFormat.money(money.unpaid))
                 .font(ForgeType.heroMoney)
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
-            Text(overdueCaption)
+            Text(overdueCaption(money))
                 .font(ForgeType.secondary)
                 .foregroundStyle(.white.opacity(0.72))
-            if overdueInvoices.isEmpty == false {
-                Text("Overdue \(FieldFormat.money(sum(overdueInvoices)))")
+            if money.overdueCount > 0 {
+                Text("Overdue \(FieldFormat.money(money.overdue))")
                     .font(ForgeType.overline)
                     .foregroundStyle(Color(red: 1, green: 0.74, blue: 0.70))
                     .padding(.top, 4)
@@ -116,13 +109,56 @@ struct ReportsView: View {
         .accessibilityElement(children: .combine)
     }
 
-    private var overdueCaption: String {
-        let open = openInvoices.count == 1 ? "1 open invoice" : "\(openInvoices.count) open invoices"
-        guard overdueInvoices.isEmpty == false else {
-            return openInvoices.isEmpty ? "Nothing outstanding" : open
+    private func overdueCaption(_ money: MoneySnapshot) -> String {
+        let open = money.openCount == 1 ? "1 open invoice" : "\(money.openCount) open invoices"
+        guard money.overdueCount > 0 else {
+            return money.openCount == 0 ? "Nothing outstanding" : open
         }
-        let late = overdueInvoices.count == 1 ? "1 overdue" : "\(overdueInvoices.count) overdue"
+        let late = money.overdueCount == 1 ? "1 overdue" : "\(money.overdueCount) overdue"
         return "\(late) · \(open)"
+    }
+
+    private var moneySnapshot: MoneySnapshot {
+        let week = weekInterval
+        let month = monthInterval
+        var unpaid = Decimal(0)
+        var overdue = Decimal(0)
+        var openCount = 0
+        var overdueCount = 0
+        var paidWeek = Decimal(0)
+        var paidMonth = Decimal(0)
+        for invoice in invoices {
+            let total = invoiceTotal(invoice)
+            if invoice.isOpen {
+                openCount += 1
+                unpaid += total
+                if invoice.displayStatus == .overdue {
+                    overdueCount += 1
+                    overdue += total
+                }
+            }
+            if invoice.status == .paid, let paidAt = invoice.paidAt {
+                if week.contains(paidAt) { paidWeek += total }
+                if month.contains(paidAt) { paidMonth += total }
+            }
+        }
+        var doneWeek = 0
+        var doneMonth = 0
+        for job in jobs where job.status == .done {
+            let when = job.completedAt ?? job.scheduledAt
+            if week.contains(when) { doneWeek += 1 }
+            if month.contains(when) { doneMonth += 1 }
+        }
+        return MoneySnapshot(
+            unpaid: unpaid,
+            openCount: openCount,
+            overdue: overdue,
+            overdueCount: overdueCount,
+            paidWeek: paidWeek,
+            paidMonth: paidMonth,
+            doneWeek: doneWeek,
+            doneMonth: doneMonth
+        )
     }
 
     private var weekInterval: DateInterval {
@@ -137,26 +173,19 @@ struct ReportsView: View {
         return DateInterval(start: start, end: end)
     }
 
-    private func paid(in interval: DateInterval) -> Decimal {
-        let rows = invoices.filter { invoice in
-            guard invoice.status == .paid, let paidAt = invoice.paidAt else { return false }
-            return interval.contains(paidAt)
-        }
-        return sum(rows)
+    private func invoiceTotal(_ invoice: Invoice) -> Decimal {
+        guard let quote = invoice.quote else { return 0 }
+        return MoneyMath.summarize(items: quote.lineItems, taxBasisPoints: quote.taxBasisPoints).total
     }
+}
 
-    private func completed(in interval: DateInterval) -> Int {
-        jobs.filter { job in
-            guard job.status == .done else { return false }
-            let when = job.completedAt ?? job.scheduledAt
-            return interval.contains(when)
-        }.count
-    }
-
-    private func sum(_ rows: [Invoice]) -> Decimal {
-        rows.reduce(Decimal(0)) { partial, invoice in
-            guard let quote = invoice.quote else { return partial }
-            return partial + MoneyMath.summarize(items: quote.lineItems, taxBasisPoints: quote.taxBasisPoints).total
-        }
-    }
+private struct MoneySnapshot {
+    var unpaid: Decimal
+    var openCount: Int
+    var overdue: Decimal
+    var overdueCount: Int
+    var paidWeek: Decimal
+    var paidMonth: Decimal
+    var doneWeek: Int
+    var doneMonth: Int
 }

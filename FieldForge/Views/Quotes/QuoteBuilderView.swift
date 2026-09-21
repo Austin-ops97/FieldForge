@@ -14,6 +14,8 @@ struct QuoteBuilderView: View {
     @State private var showDraftSaved = false
     @State private var shareURL: URL?
     @State private var shareFailed = false
+    @State private var notesDraft = ""
+    @State private var notesReady = false
 
     private var items: [LineItem] {
         quote.lineItems.sorted { $0.sortIndex < $1.sortIndex }
@@ -104,11 +106,8 @@ struct QuoteBuilderView: View {
 
             Section("Notes on the quote") {
                 if quote.isEditable {
-                    TextField("Shown to the customer", text: $quote.notes, axis: .vertical)
+                    TextField("Shown to the customer", text: $notesDraft, axis: .vertical)
                         .lineLimit(3...6)
-                        .onChange(of: quote.notes) { _, _ in
-                            quote.needsSync = true
-                        }
                 } else if quote.notes.isEmpty {
                     Text("No notes")
                         .foregroundStyle(.secondary)
@@ -130,7 +129,8 @@ struct QuoteBuilderView: View {
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 PDFShareButton(fileURL: $shareURL, failed: $shareFailed, accessibilityLabel: "Share quote PDF") {
-                    FieldPDF.quoteFile(quote, shop: shops.first)
+                    commitNotes()
+                    return FieldPDF.quoteFile(quote, shop: shops.first)
                 }
                 if quote.isEditable {
                     Menu {
@@ -205,6 +205,21 @@ struct QuoteBuilderView: View {
             Text("\(quote.number) is a draft on this iPhone. Accept it when the customer says yes.")
         }
         .pdfShareSheet(url: $shareURL, failed: $shareFailed)
+        .onAppear {
+            guard notesReady == false else { return }
+            notesDraft = quote.notes
+            notesReady = true
+        }
+        .onDisappear(perform: commitNotes)
+    }
+
+    private func commitNotes() {
+        guard notesReady, quote.isEditable else { return }
+        let trimmed = notesDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed != quote.notes else { return }
+        quote.notes = trimmed
+        quote.needsSync = true
+        try? context.save()
     }
 
     @ViewBuilder
@@ -218,6 +233,7 @@ struct QuoteBuilderView: View {
             } else if quote.isEditable {
                 if quote.status == .draft {
                     Button {
+                        commitNotes()
                         QuoteActions.saveDraft(quote, in: context)
                         showDraftSaved = true
                     } label: {
@@ -230,7 +246,11 @@ struct QuoteBuilderView: View {
                     .tint(ForgeTheme.ink)
                 }
                 Button {
+                    commitNotes()
                     openedInvoice = QuoteActions.accept(quote, in: context)
+                    if openedInvoice != nil {
+                        ForgeHaptic.success()
+                    }
                     showInvoice = openedInvoice != nil
                 } label: {
                     Label("Accept quote", systemImage: "checkmark")

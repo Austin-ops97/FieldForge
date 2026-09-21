@@ -17,6 +17,8 @@ struct JobFormView: View {
     @State private var address = ""
     @State private var notes = ""
     @State private var didLoad = false
+    @State private var addressEdited = false
+    @State private var showNewClient = false
 
     private var selectedClient: Client? {
         if let lockedClient { return lockedClient }
@@ -32,19 +34,29 @@ struct JobFormView: View {
             Form {
                 Section("Job") {
                     TextField("Title", text: $title)
-                    Picker("Status", selection: $status) {
-                        ForEach(JobStatus.allCases) { item in
-                            Text(item.label).tag(item)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Status")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(spacing: 8) {
+                                ForEach(JobStatus.allCases) { item in
+                                    FilterChip(title: item.label, selected: status == item, tint: ForgeTheme.jobTint(item)) {
+                                        status = item
+                                    }
+                                }
+                            }
                         }
+                        .frame(height: 52)
                     }
-                    DatePicker("When", selection: $scheduledAt)
+                    DatePicker("Scheduled", selection: $scheduledAt)
                 }
                 Section("Client") {
-                    if clients.isEmpty {
-                        Text("Add a client before creating a job.")
+                    if let lockedClient {
+                        LabeledContent("Client", value: lockedClient.name)
+                    } else if clients.isEmpty {
+                        Text("Add a client to attach this job.")
                             .foregroundStyle(.secondary)
-                    } else if lockedClient != nil {
-                        Text(lockedClient?.name ?? "")
                     } else {
                         Picker("Client", selection: $selectedClientID) {
                             Text("Select").tag(nil as PersistentIdentifier?)
@@ -52,10 +64,14 @@ struct JobFormView: View {
                                 Text(client.name).tag(client.persistentModelID as PersistentIdentifier?)
                             }
                         }
-                        .onChange(of: selectedClientID) { _, _ in
-                            if address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                                address = selectedClient?.address ?? ""
-                            }
+                        .pickerStyle(.navigationLink)
+                    }
+                    if lockedClient == nil {
+                        Button {
+                            showNewClient = true
+                        } label: {
+                            Label("New client", systemImage: "person.badge.plus")
+                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                         }
                     }
                     TextField("Job address", text: $address, axis: .vertical)
@@ -64,6 +80,13 @@ struct JobFormView: View {
                 Section("Notes") {
                     TextField("What you saw on site", text: $notes, axis: .vertical)
                         .lineLimit(3...6)
+                }
+                if canSave == false {
+                    Section {
+                        Text("Add a title and a client, then save. You’ll land on the job.")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .navigationTitle(job == nil ? "New Job" : "Edit Job")
@@ -78,6 +101,24 @@ struct JobFormView: View {
                 }
             }
             .onAppear(perform: load)
+            .onChange(of: selectedClientID) { _, _ in
+                guard didLoad, job == nil, addressEdited == false else { return }
+                address = selectedClient?.address ?? ""
+            }
+            .onChange(of: address) { _, newValue in
+                guard didLoad else { return }
+                if newValue != (selectedClient?.address ?? "") {
+                    addressEdited = true
+                }
+            }
+            .sheet(isPresented: $showNewClient) {
+                ClientFormView(client: nil) { client in
+                    selectedClientID = client.persistentModelID
+                    if addressEdited == false {
+                        address = client.address
+                    }
+                }
+            }
         }
     }
 
@@ -91,13 +132,13 @@ struct JobFormView: View {
             address = job.address
             notes = job.notes
             selectedClientID = job.client?.persistentModelID
+            addressEdited = true
         } else if let lockedClient {
             selectedClientID = lockedClient.persistentModelID
             address = lockedClient.address
             scheduledAt = Calendar.current.date(byAdding: .hour, value: 1, to: .now) ?? .now
-        } else if let first = clients.first {
-            selectedClientID = first.persistentModelID
-            address = first.address
+        } else {
+            scheduledAt = Calendar.current.date(byAdding: .hour, value: 1, to: .now) ?? .now
         }
     }
 

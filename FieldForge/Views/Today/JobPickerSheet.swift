@@ -6,14 +6,19 @@ struct JobPickerSheet: View {
     @Query(sort: \Job.scheduledAt, order: .reverse) private var jobs: [Job]
     var onPick: (Job) -> Void
 
+    @State private var showNewJob = false
+    @State private var createdJob: Job?
+
     var body: some View {
         NavigationStack {
             Group {
                 if jobs.isEmpty {
                     EmptyHint(
                         title: "No jobs yet",
-                        message: "Create a job first, then build a quote from it.",
-                        systemImage: "wrench.and.screwdriver"
+                        message: "Create the job first, then add line items from the price book.",
+                        systemImage: "wrench.and.screwdriver",
+                        actionTitle: "New job",
+                        action: { showNewJob = true }
                     )
                 } else {
                     List(jobs) { job in
@@ -21,13 +26,17 @@ struct JobPickerSheet: View {
                             onPick(job)
                             dismiss()
                         } label: {
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(job.title)
-                                    .font(.body.weight(.semibold))
-                                    .foregroundStyle(.primary)
-                                Text(job.client?.name ?? "No client")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
+                            HStack(spacing: 12) {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(job.title)
+                                        .font(.body.weight(.semibold))
+                                        .foregroundStyle(.primary)
+                                    Text(job.client?.name ?? "No client")
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                }
+                                Spacer()
+                                StatusChip(title: job.status.label, tint: ForgeTheme.jobTint(job.status))
                             }
                             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)
                         }
@@ -35,13 +44,28 @@ struct JobPickerSheet: View {
                     .listStyle(.insetGrouped)
                 }
             }
-            .navigationTitle("Quote for which job?")
+            .navigationTitle("New Quote")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("New job") { showNewJob = true }
+                }
+            }
+            .sheet(isPresented: $showNewJob, onDismiss: finishCreatedJob) {
+                JobFormView(job: nil) { job in
+                    createdJob = job
+                }
             }
         }
+    }
+
+    private func finishCreatedJob() {
+        guard let createdJob else { return }
+        onPick(createdJob)
+        self.createdJob = nil
+        dismiss()
     }
 }

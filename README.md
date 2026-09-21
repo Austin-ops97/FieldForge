@@ -1,6 +1,6 @@
 # FieldForge
 
-Field OS for a solo plumber, HVAC tech, electrician, or handyman: client, job, quote, invoice. This repository is a clickable SwiftUI shell for iPhone (iOS 17+). Sample plumbing data lives in SwiftData on the device. Sync, PDF export, and card payments are stubbed.
+Field OS for a solo plumber, HVAC tech, electrician, or handyman: client, job, quote, invoice. This repository is a clickable SwiftUI shell for iPhone (iOS 17+). Sample plumbing data lives in SwiftData on the device. Sync and card payments are stubbed. Quote and invoice share builds a one-page PDF and opens the system share sheet.
 
 ## Open and run
 
@@ -22,15 +22,21 @@ This is the path to try first:
 3. Open quote **Q-1042** (Draft). It already has labor, a faucet, and supply lines.
 4. Tap **Accept quote**. FieldForge creates an invoice and opens it.
 5. Tap **Mark Paid**. The invoice status switches to Paid.
+6. Tap the share button on the quote or the invoice. FieldForge writes a PDF (client, line items, tax, total, status) and presents the share sheet.
 
-**Today** starts with money owed from the seeded disposal invoice (**INV-220**), which is unpaid and past due. Accepting Q-1042 adds a second open invoice. Marking that new invoice paid leaves INV-220 on the money-owed list.
+**Today** starts with money owed from the seeded disposal invoice (**INV-220**), which is unpaid and past due. The overdue invoice is called out in red on Today. Accepting Q-1042 adds a second open invoice. Marking that new invoice paid leaves INV-220 on the money-owed list.
 
-Other stops, all of which lead somewhere:
+New job and new quote, without dead ends:
 
-- **Today**: today’s jobs, **New Job**, **New Quote**, and **Sync now** (a stub that clears the on-device “waiting to sync” marks).
+- **New Job** (Today, Jobs, or a client): pick a client or create one, then title, status, scheduled time, address, and notes. Save opens the job.
+- **New Quote** (Today or a job): pick a job or create one, set a quantity, add price-book or custom lines, and watch the subtotal, tax, and total. **Save draft** keeps it a draft. **Accept quote** still creates the invoice.
+
+Other stops:
+
 - **Jobs**: status filters, notes, photo placeholders, a voice-note stub, and **Create quote**.
 - **Price Book**: eight plumbing prices. Tap a row to edit, or use **+** to add one.
-- Share on a quote or invoice sends a text summary. PDF export is not in this shell.
+- Empty lists explain what’s missing and offer a button to add a record or clear the filter.
+- **Sync now** on Today only clears the on-device “waiting to sync” marks.
 
 ## Sample shop
 

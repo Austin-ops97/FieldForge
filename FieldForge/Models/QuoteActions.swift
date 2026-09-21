@@ -19,11 +19,16 @@ enum QuoteActions {
         return quote
     }
 
-    static func addPriceBookItem(_ source: PriceBookItem, to quote: Quote, in context: ModelContext) {
+    static func addPriceBookItem(
+        _ source: PriceBookItem,
+        quantity: Int = 1,
+        to quote: Quote,
+        in context: ModelContext
+    ) {
         let item = LineItem(
             name: source.name,
             unit: source.unit,
-            quantity: 1,
+            quantity: max(1, quantity),
             unitPrice: source.unitPrice,
             taxable: source.taxable,
             sortIndex: nextSortIndex(in: quote)
@@ -39,13 +44,14 @@ enum QuoteActions {
         unit: String,
         unitPrice: Decimal,
         taxable: Bool,
+        quantity: Int = 1,
         to quote: Quote,
         in context: ModelContext
     ) {
         let item = LineItem(
             name: name,
             unit: unit,
-            quantity: 1,
+            quantity: max(1, quantity),
             unitPrice: unitPrice,
             taxable: taxable,
             sortIndex: nextSortIndex(in: quote)
@@ -78,6 +84,13 @@ enum QuoteActions {
         invoice.quote = quote
         try? context.save()
         return invoice
+    }
+
+    static func saveDraft(_ quote: Quote, in context: ModelContext) {
+        guard quote.status != .accepted else { return }
+        quote.status = .draft
+        quote.needsSync = true
+        try? context.save()
     }
 
     static func markPaid(_ invoice: Invoice, in context: ModelContext) {

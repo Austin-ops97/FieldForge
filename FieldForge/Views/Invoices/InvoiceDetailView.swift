@@ -5,13 +5,19 @@ struct InvoiceDetailView: View {
     @Environment(\.modelContext) private var context
     @Query private var shops: [ShopProfile]
     @Bindable var invoice: Invoice
-
-    private var shopName: String { shops.first?.businessName ?? "FieldForge" }
+    @State private var shareURL: URL?
+    @State private var shareFailed = false
 
     private var quote: Quote? { invoice.quote }
 
     private var items: [LineItem] {
         (quote?.lineItems ?? []).sorted { $0.sortIndex < $1.sortIndex }
+    }
+
+    private var invoiceTotalColor: Color {
+        if invoice.status == .paid { return ForgeTheme.paid }
+        if invoice.displayStatus == .overdue { return ForgeTheme.overdue }
+        return ForgeTheme.navy
     }
 
     private var totals: QuoteTotals {
@@ -33,7 +39,7 @@ struct InvoiceDetailView: View {
                     }
                     Text(FieldFormat.money(totals.total))
                         .font(.system(size: 34, weight: .bold, design: .rounded))
-                        .foregroundStyle(invoice.status == .paid ? ForgeTheme.paid : ForgeTheme.navy)
+                        .foregroundStyle(invoiceTotalColor)
                     if let paidAt = invoice.paidAt, invoice.status == .paid {
                         Text("Paid \(paidAt.formatted(date: .abbreviated, time: .shortened))")
                             .font(.subheadline)
@@ -98,6 +104,12 @@ struct InvoiceDetailView: View {
             Section("Dates") {
                 LabeledContent("Issued", value: invoice.issuedAt.formatted(date: .abbreviated, time: .omitted))
                 LabeledContent("Due", value: invoice.dueAt.formatted(date: .abbreviated, time: .omitted))
+                if invoice.displayStatus == .overdue {
+                    Label("Past due", systemImage: "exclamationmark.circle.fill")
+                        .font(.body.weight(.semibold))
+                        .foregroundStyle(ForgeTheme.overdue)
+                        .frame(minHeight: 36, alignment: .leading)
+                }
             }
         }
         .listStyle(.insetGrouped)
@@ -105,10 +117,9 @@ struct InvoiceDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: ShareSummary.invoice(invoice, shop: shopName)) {
-                    Image(systemName: "square.and.arrow.up")
+                PDFShareButton(fileURL: $shareURL, failed: $shareFailed, accessibilityLabel: "Share invoice PDF") {
+                    FieldPDF.invoiceFile(invoice, shop: shops.first)
                 }
-                .accessibilityLabel("Share invoice summary")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -131,14 +142,16 @@ struct InvoiceDetailView: View {
                     .buttonStyle(.borderedProminent)
                     .buttonBorderShape(.roundedRectangle(radius: 14))
                 }
-                Text("Share sends a text summary. PDF comes later.")
+                Text(invoice.status == .paid ? "Share sends a PDF of this paid invoice." : "Share sends a PDF. Mark paid when the money lands.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
             }
             .padding(.horizontal, 16)
             .padding(.top, 10)
             .padding(.bottom, 8)
             .background(.ultraThinMaterial)
         }
+        .pdfShareSheet(url: $shareURL, failed: $shareFailed)
     }
 }

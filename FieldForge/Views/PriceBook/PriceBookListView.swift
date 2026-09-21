@@ -9,6 +9,7 @@ struct PriceBookListView: View {
     @State private var search = ""
     @State private var editing: PriceBookItem?
     @State private var showNew = false
+    @State private var itemToDelete: PriceBookItem?
 
     private var filtered: [PriceBookItem] {
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -28,8 +29,16 @@ struct PriceBookListView: View {
                         title: items.isEmpty ? "Empty price book" : "No matches",
                         message: items.isEmpty
                             ? "Add the labor and materials you quote every week."
-                            : "Try another name or category.",
-                        systemImage: "book.closed"
+                            : "Nothing matches that search.",
+                        systemImage: "book.closed",
+                        actionTitle: items.isEmpty ? "Add item" : "Clear search",
+                        action: {
+                            if items.isEmpty {
+                                showNew = true
+                            } else {
+                                search = ""
+                            }
+                        }
                     )
                 } else {
                     List {
@@ -51,7 +60,7 @@ struct PriceBookListView: View {
                                         .buttonStyle(.plain)
                                         .swipeActions {
                                             Button(role: .destructive) {
-                                                context.delete(item)
+                                                itemToDelete = item
                                             } label: {
                                                 Label("Delete", systemImage: "trash")
                                             }
@@ -81,6 +90,25 @@ struct PriceBookListView: View {
             }
             .sheet(isPresented: $showNew) {
                 PriceBookFormView(item: nil)
+            }
+            .confirmationDialog(
+                "Delete this price?",
+                isPresented: Binding(
+                    get: { itemToDelete != nil },
+                    set: { if $0 == false { itemToDelete = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let itemToDelete {
+                        context.delete(itemToDelete)
+                        try? context.save()
+                    }
+                    itemToDelete = nil
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("Quotes that already use it keep their own line items.")
             }
         }
     }

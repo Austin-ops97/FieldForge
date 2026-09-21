@@ -5,19 +5,26 @@ struct StatusChip: View {
     var tint: Color
 
     var body: some View {
-        Text(title)
-            .font(.subheadline.weight(.semibold))
-            .foregroundStyle(tint)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 7)
-            .background(tint.opacity(0.16), in: Capsule())
-            .accessibilityLabel("Status \(title)")
+        HStack(spacing: 6) {
+            Circle()
+                .fill(tint)
+                .frame(width: 8, height: 8)
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(1)
+        }
+        .foregroundStyle(tint)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 7)
+        .background(tint.opacity(0.16), in: Capsule())
+        .accessibilityLabel("Status \(title)")
     }
 }
 
 struct FilterChip: View {
     var title: String
     var selected: Bool
+    var tint: Color = ForgeTheme.copper
     var action: () -> Void
 
     var body: some View {
@@ -26,7 +33,7 @@ struct FilterChip: View {
                 .font(.subheadline.weight(.semibold))
                 .padding(.horizontal, 14)
                 .frame(minHeight: 44)
-                .background(selected ? ForgeTheme.copper : Color(.secondarySystemFill), in: Capsule())
+                .background(selected ? tint : Color(.secondarySystemFill), in: Capsule())
                 .foregroundStyle(selected ? Color.white : Color.primary)
         }
         .buttonStyle(.plain)
@@ -63,10 +70,22 @@ struct EmptyHint: View {
     var title: String
     var message: String
     var systemImage: String
+    var actionTitle: String?
+    var action: (() -> Void)?
 
     var body: some View {
-        ContentUnavailableView(title, systemImage: systemImage, description: Text(message))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        ContentUnavailableView {
+            Label(title, systemImage: systemImage)
+        } description: {
+            Text(message)
+        } actions: {
+            if let actionTitle, let action {
+                Button(actionTitle, action: action)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

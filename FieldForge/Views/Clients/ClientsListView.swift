@@ -24,8 +24,16 @@ struct ClientsListView: View {
                         title: clients.isEmpty ? "No clients yet" : "No matches",
                         message: clients.isEmpty
                             ? "Add the people you quote and invoice."
-                            : "Try a name, street, or phone number.",
-                        systemImage: "person.2"
+                            : "Nothing matches that search.",
+                        systemImage: "person.2",
+                        actionTitle: clients.isEmpty ? "New client" : "Clear search",
+                        action: {
+                            if clients.isEmpty {
+                                showNew = true
+                            } else {
+                                search = ""
+                            }
+                        }
                     )
                 } else {
                     List(filtered) { client in

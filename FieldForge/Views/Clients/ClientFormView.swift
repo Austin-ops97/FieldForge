@@ -6,6 +6,7 @@ struct ClientFormView: View {
     @Environment(\.modelContext) private var context
 
     var client: Client?
+    var onSave: (Client) -> Void = { _ in }
 
     @State private var name = ""
     @State private var phone = ""
@@ -61,6 +62,7 @@ struct ClientFormView: View {
 
     private func save() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let saved: Client
         if let client {
             client.name = trimmedName
             client.phone = phone.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -68,6 +70,7 @@ struct ClientFormView: View {
             client.address = address.trimmingCharacters(in: .whitespacesAndNewlines)
             client.notes = notes.trimmingCharacters(in: .whitespacesAndNewlines)
             client.needsSync = true
+            saved = client
         } else {
             let newClient = Client(
                 name: trimmedName,
@@ -78,8 +81,10 @@ struct ClientFormView: View {
                 needsSync: true
             )
             context.insert(newClient)
+            saved = newClient
         }
         try? context.save()
+        onSave(saved)
         dismiss()
     }
 }

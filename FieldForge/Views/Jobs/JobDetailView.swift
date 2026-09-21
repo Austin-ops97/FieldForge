@@ -32,7 +32,7 @@ struct JobDetailView: View {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 8) {
                         ForEach(JobStatus.allCases) { status in
-                            FilterChip(title: status.label, selected: job.status == status) {
+                            FilterChip(title: status.label, selected: job.status == status, tint: ForgeTheme.jobTint(status)) {
                                 job.status = status
                                 job.needsSync = true
                             }
@@ -111,7 +111,7 @@ struct JobDetailView: View {
 
             Section("Quotes") {
                 if quotes.isEmpty {
-                    Text("No quote yet. Build one from the price book.")
+                    Text("No quote yet. Create one and add prices below.")
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(quotes) { quote in

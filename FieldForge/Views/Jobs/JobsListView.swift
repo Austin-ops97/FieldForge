@@ -3,9 +3,11 @@ import SwiftUI
 
 struct JobsListView: View {
     @Query(sort: \Job.scheduledAt, order: .reverse) private var jobs: [Job]
+    @State private var path = NavigationPath()
     @State private var search = ""
     @State private var statusFilter: JobStatus?
     @State private var showNew = false
+    @State private var pendingJob: Job?
 
     private var filtered: [Job] {
         jobs.filter { job in
@@ -18,7 +20,7 @@ struct JobsListView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 filterBar
                 Group {
@@ -26,9 +28,18 @@ struct JobsListView: View {
                         EmptyHint(
                             title: jobs.isEmpty ? "No jobs yet" : "Nothing in this view",
                             message: jobs.isEmpty
-                                ? "Start a job from Today or from a client."
-                                : "Clear the filter or try another search.",
-                            systemImage: "wrench.and.screwdriver"
+                                ? "Create a job with a client, address, and time."
+                                : "Nothing matches this filter.",
+                            systemImage: "wrench.and.screwdriver",
+                            actionTitle: jobs.isEmpty ? "New job" : "Clear filters",
+                            action: {
+                                if jobs.isEmpty {
+                                    showNew = true
+                                } else {
+                                    statusFilter = nil
+                                    search = ""
+                                }
+                            }
                         )
                     } else {
                         List(filtered) { job in
@@ -53,10 +64,18 @@ struct JobsListView: View {
                 }
             }
             .forgeRoutes()
-            .sheet(isPresented: $showNew) {
-                JobFormView(job: nil)
+            .sheet(isPresented: $showNew, onDismiss: openPendingJob) {
+                JobFormView(job: nil) { job in
+                    pendingJob = job
+                }
             }
         }
+    }
+
+    private func openPendingJob() {
+        guard let pendingJob else { return }
+        path.append(pendingJob)
+        self.pendingJob = nil
     }
 
     private var filterBar: some View {
@@ -66,7 +85,7 @@ struct JobsListView: View {
                     statusFilter = nil
                 }
                 ForEach(JobStatus.allCases) { status in
-                    FilterChip(title: status.label, selected: statusFilter == status) {
+                    FilterChip(title: status.label, selected: statusFilter == status, tint: ForgeTheme.jobTint(status)) {
                         statusFilter = status
                     }
                 }

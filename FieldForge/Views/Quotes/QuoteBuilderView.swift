@@ -10,8 +10,10 @@ struct QuoteBuilderView: View {
     @State private var showInvoice = false
     @State private var openedInvoice: Invoice?
     @State private var confirmDecline = false
-
-    private var shopName: String { shops.first?.businessName ?? "FieldForge" }
+    @State private var lineToDelete: LineItem?
+    @State private var showDraftSaved = false
+    @State private var shareURL: URL?
+    @State private var shareFailed = false
 
     private var items: [LineItem] {
         quote.lineItems.sorted { $0.sortIndex < $1.sortIndex }
@@ -52,8 +54,7 @@ struct QuoteBuilderView: View {
                             .swipeActions {
                                 if quote.isEditable {
                                     Button(role: .destructive) {
-                                        context.delete(item)
-                                        quote.needsSync = true
+                                        lineToDelete = item
                                     } label: {
                                         Label("Delete", systemImage: "trash")
                                     }
@@ -120,25 +121,41 @@ struct QuoteBuilderView: View {
         .navigationTitle("Quote")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                ShareLink(item: ShareSummary.quote(quote, shop: shopName)) {
-                    Image(systemName: "square.and.arrow.up")
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                PDFShareButton(fileURL: $shareURL, failed: $shareFailed, accessibilityLabel: "Share quote PDF") {
+                    FieldPDF.quoteFile(quote, shop: shops.first)
                 }
-                .accessibilityLabel("Share quote summary")
+                if quote.isEditable {
+                    Menu {
+                        if quote.status == .draft {
+                            Button("Mark sent") {
+                                quote.status = .sent
+                                quote.needsSync = true
+                            }
+                        }
+                        Button("Decline quote", role: .destructive) {
+                            confirmDecline = true
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                    .accessibilityLabel("Quote actions")
+                }
             }
         }
         .safeAreaInset(edge: .bottom) {
             bottomBar
         }
         .sheet(isPresented: $showAdd) {
-            AddLineItemSheet { item in
-                QuoteActions.addPriceBookItem(item, to: quote, in: context)
-            } onCustom: { name, unit, price, taxable in
+            AddLineItemSheet { item, quantity in
+                QuoteActions.addPriceBookItem(item, quantity: quantity, to: quote, in: context)
+            } onCustom: { name, unit, price, taxable, quantity in
                 QuoteActions.addCustomLine(
                     name: name,
                     unit: unit,
                     unitPrice: price,
                     taxable: taxable,
+                    quantity: quantity,
                     to: quote,
                     in: context
                 )
@@ -156,6 +173,31 @@ struct QuoteBuilderView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+        .confirmationDialog(
+            "Remove this line?",
+            isPresented: Binding(
+                get: { lineToDelete != nil },
+                set: { if $0 == false { lineToDelete = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Remove line", role: .destructive) {
+                if let lineToDelete {
+                    context.delete(lineToDelete)
+                    quote.needsSync = true
+                }
+                lineToDelete = nil
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The total updates when the line is removed.")
+        }
+        .alert("Draft saved", isPresented: $showDraftSaved) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("\(quote.number) is a draft on this iPhone. Accept it when the customer says yes.")
+        }
+        .pdfShareSheet(url: $shareURL, failed: $shareFailed)
     }
 
     @ViewBuilder
@@ -167,20 +209,17 @@ struct QuoteBuilderView: View {
                     showInvoice = quote.invoice != nil
                 }
             } else if quote.isEditable {
-                HStack(spacing: 10) {
-                    if quote.status == .draft {
-                        Button("Mark sent") {
-                            quote.status = .sent
-                            quote.needsSync = true
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.large)
-                    }
-                    Button("Decline") {
-                        confirmDecline = true
+                if quote.status == .draft {
+                    Button {
+                        QuoteActions.saveDraft(quote, in: context)
+                        showDraftSaved = true
+                    } label: {
+                        Label("Save draft", systemImage: "square.and.arrow.down")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, minHeight: 48)
                     }
                     .buttonStyle(.bordered)
-                    .controlSize(.large)
+                    .buttonBorderShape(.roundedRectangle(radius: 14))
                 }
                 Button {
                     openedInvoice = QuoteActions.accept(quote, in: context)
@@ -194,8 +233,13 @@ struct QuoteBuilderView: View {
                 .buttonStyle(.borderedProminent)
                 .buttonBorderShape(.roundedRectangle(radius: 14))
                 .disabled(items.isEmpty)
+                if items.isEmpty {
+                    Text("Add a line item before accepting.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
-            Text("Saved on this iPhone")
+            Text("Share sends a PDF. The draft stays on this iPhone.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }

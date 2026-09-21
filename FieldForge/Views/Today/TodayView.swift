@@ -24,6 +24,10 @@ struct TodayView: View {
             .sorted { $0.dueAt < $1.dueAt }
     }
 
+    private var overdueInvoices: [Invoice] {
+        openInvoices.filter { $0.displayStatus == .overdue }
+    }
+
     private var amountOwed: Decimal {
         openInvoices.reduce(Decimal(0)) { partial, invoice in
             guard let quote = invoice.quote else { return partial }
@@ -57,10 +61,13 @@ struct TodayView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     shopHeader
+                    if overdueInvoices.isEmpty == false {
+                        overdueSection
+                    }
                     moneyCard
                     actionRow
-                    jobSection(title: "Today", jobs: todaysJobs, empty: "Nothing on the board today.")
-                    jobSection(title: "Coming up", jobs: upcomingJobs, empty: "No jobs in the next week.")
+                    jobSection(title: "Today", jobs: todaysJobs, empty: "Nothing on the board today.", actionTitle: "New job")
+                    jobSection(title: "Coming up", jobs: upcomingJobs, empty: "No jobs in the next week.", actionTitle: "New job")
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 28)
@@ -145,17 +152,38 @@ struct TodayView: View {
             .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(ForgeTheme.navy, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .overlay {
+                if overdueInvoices.isEmpty == false {
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .strokeBorder(ForgeTheme.overdue, lineWidth: 2)
+                }
+            }
         }
         .buttonStyle(.plain)
         .accessibilityHint("Opens unpaid invoices")
     }
 
-    private var openInvoiceCaption: String {
-        switch openInvoices.count {
-        case 0: "Nothing outstanding"
-        case 1: "1 open invoice"
-        default: "\(openInvoices.count) open invoices"
+    private var overdueSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Overdue", systemImage: "exclamationmark.circle.fill")
+                .font(.title3.weight(.bold))
+                .foregroundStyle(ForgeTheme.overdue)
+            ForEach(overdueInvoices) { invoice in
+                NavigationLink(value: invoice) {
+                    OverdueInvoiceCard(invoice: invoice)
+                }
+                .buttonStyle(.plain)
+            }
         }
+    }
+
+    private var openInvoiceCaption: String {
+        let open = openInvoices.count == 1 ? "1 open invoice" : "\(openInvoices.count) open invoices"
+        guard overdueInvoices.isEmpty == false else {
+            return openInvoices.isEmpty ? "Nothing outstanding" : open
+        }
+        let late = overdueInvoices.count == 1 ? "1 overdue" : "\(overdueInvoices.count) overdue"
+        return "\(late) · \(open)"
     }
 
     private var actionRow: some View {
@@ -185,17 +213,22 @@ struct TodayView: View {
             }
     }
 
-    private func jobSection(title: String, jobs: [Job], empty: String) -> some View {
+    private func jobSection(title: String, jobs: [Job], empty: String, actionTitle: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(title)
                 .font(.title3.weight(.bold))
             if jobs.isEmpty {
-                Text(empty)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(16)
-                    .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                VStack(alignment: .leading, spacing: 12) {
+                    Text(empty)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Button(actionTitle) { showNewJob = true }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.large)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16)
+                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
             } else {
                 VStack(spacing: 10) {
                     ForEach(jobs) { job in
@@ -259,7 +292,12 @@ private struct TodayJobCard: View {
 }
 
 struct MoneyOwedView: View {
+    @Environment(\.modelContext) private var context
     @Query private var invoices: [Invoice]
+    @State private var showNewQuote = false
+    @State private var quoteToOpen: Quote?
+    @State private var showQuote = false
+    @State private var quoteCreatedThisSession = false
 
     private var openInvoices: [Invoice] {
         invoices.filter { $0.isOpen }.sorted { $0.dueAt < $1.dueAt }
@@ -271,18 +309,82 @@ struct MoneyOwedView: View {
                 EmptyHint(
                     title: "All caught up",
                     message: "Open invoices show up here until you mark them paid.",
-                    systemImage: "checkmark.circle"
+                    systemImage: "checkmark.circle",
+                    actionTitle: "New quote",
+                    action: { showNewQuote = true }
                 )
             } else {
                 List(openInvoices) { invoice in
                     NavigationLink(value: invoice) {
                         InvoiceRow(invoice: invoice)
                     }
+                    .listRowBackground(rowBackground(invoice))
                 }
                 .listStyle(.insetGrouped)
             }
         }
         .navigationTitle("Money owed")
+        .sheet(isPresented: $showNewQuote, onDismiss: {
+            if quoteCreatedThisSession {
+                showQuote = true
+            }
+            quoteCreatedThisSession = false
+        }) {
+            JobPickerSheet { job in
+                quoteToOpen = QuoteActions.makeDraft(for: job, in: context)
+                quoteCreatedThisSession = true
+            }
+        }
+        .navigationDestination(isPresented: $showQuote) {
+            if let quoteToOpen {
+                QuoteBuilderView(quote: quoteToOpen)
+            }
+        }
+    }
+
+    private func rowBackground(_ invoice: Invoice) -> Color {
+        invoice.displayStatus == .overdue
+            ? ForgeTheme.overdue.opacity(0.14)
+            : Color(.secondarySystemGroupedBackground)
+    }
+}
+
+private struct OverdueInvoiceCard: View {
+    let invoice: Invoice
+
+    private var total: Decimal {
+        guard let quote = invoice.quote else { return 0 }
+        return MoneyMath.summarize(items: quote.lineItems, taxBasisPoints: quote.taxBasisPoints).total
+    }
+
+    var body: some View {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(invoice.number)
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(.primary)
+                Text(invoice.quote?.job?.client?.name ?? "No client")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                Text("Due \(invoice.dueAt.formatted(date: .abbreviated, time: .omitted))")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(ForgeTheme.overdue)
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 6) {
+                Text(FieldFormat.money(total))
+                    .font(.body.weight(.bold))
+                    .foregroundStyle(ForgeTheme.overdue)
+                StatusChip(title: invoice.displayStatus.label, tint: ForgeTheme.invoiceTint(invoice.displayStatus))
+            }
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
+        .background(ForgeTheme.overdue.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(ForgeTheme.overdue.opacity(0.7), lineWidth: 1.5)
+        }
     }
 }
 
@@ -303,8 +405,8 @@ struct InvoiceRow: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Text("Due \(invoice.dueAt.formatted(date: .abbreviated, time: .omitted))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .font(invoice.displayStatus == .overdue ? .caption.weight(.bold) : .caption)
+                    .foregroundStyle(invoice.displayStatus == .overdue ? ForgeTheme.overdue : .secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {

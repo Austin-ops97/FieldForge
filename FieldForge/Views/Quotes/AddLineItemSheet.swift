@@ -6,9 +6,10 @@ struct AddLineItemSheet: View {
     @Query(sort: \PriceBookItem.name) private var items: [PriceBookItem]
     @State private var search = ""
     @State private var showCustom = false
+    @State private var quantity = 1
 
-    var onPick: (PriceBookItem) -> Void
-    var onCustom: (String, String, Decimal, Bool) -> Void
+    var onPick: (PriceBookItem, Int) -> Void
+    var onCustom: (String, String, Decimal, Bool, Int) -> Void
 
     private var filtered: [PriceBookItem] {
         let query = search.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -22,6 +23,11 @@ struct AddLineItemSheet: View {
         NavigationStack {
             List {
                 Section {
+                    Stepper(value: $quantity, in: 1...99) {
+                        Text("Quantity \(quantity)")
+                            .font(.body.weight(.semibold))
+                    }
+                    .frame(minHeight: 44)
                     Button {
                         showCustom = true
                     } label: {
@@ -29,15 +35,33 @@ struct AddLineItemSheet: View {
                             .font(.body.weight(.semibold))
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                     }
+                } footer: {
+                    Text("Set the quantity, then tap a price to add it. Totals update on the quote.")
                 }
                 Section("Price book") {
-                    if filtered.isEmpty {
-                        Text("No price-book items match.")
-                            .foregroundStyle(.secondary)
+                    if items.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("The price book is empty.")
+                                .font(.body.weight(.semibold))
+                            Text("Use a custom line for this quote, or add prices in the Price Book tab.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Button("Custom line") { showCustom = true }
+                                .buttonStyle(.borderedProminent)
+                        }
+                        .padding(.vertical, 6)
+                    } else if filtered.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("No prices match that search.")
+                                .font(.body.weight(.semibold))
+                            Button("Clear search") { search = "" }
+                                .buttonStyle(.borderedProminent)
+                        }
+                        .padding(.vertical, 6)
                     } else {
                         ForEach(filtered) { item in
                             Button {
-                                onPick(item)
+                                onPick(item, quantity)
                                 dismiss()
                             } label: {
                                 HStack {
@@ -70,8 +94,8 @@ struct AddLineItemSheet: View {
                 }
             }
             .sheet(isPresented: $showCustom) {
-                CustomLineSheet { name, unit, price, taxable in
-                    onCustom(name, unit, price, taxable)
+                CustomLineSheet(quantity: quantity) { name, unit, price, taxable, lineQuantity in
+                    onCustom(name, unit, price, taxable, lineQuantity)
                     dismiss()
                 }
             }
@@ -85,8 +109,14 @@ private struct CustomLineSheet: View {
     @State private var unit = "each"
     @State private var priceText = ""
     @State private var taxable = true
+    @State private var quantity: Int
 
-    var onSave: (String, String, Decimal, Bool) -> Void
+    var onSave: (String, String, Decimal, Bool, Int) -> Void
+
+    init(quantity: Int, onSave: @escaping (String, String, Decimal, Bool, Int) -> Void) {
+        _quantity = State(initialValue: quantity)
+        self.onSave = onSave
+    }
 
     private var price: Decimal? { FieldFormat.parsePrice(priceText) }
 
@@ -103,6 +133,10 @@ private struct CustomLineSheet: View {
                 TextField("Unit", text: $unit)
                 TextField("Price", text: $priceText)
                     .keyboardType(.decimalPad)
+                Stepper(value: $quantity, in: 1...99) {
+                    Text("Quantity \(quantity)")
+                }
+                .frame(minHeight: 44)
                 Toggle("Taxable", isOn: $taxable)
             }
             .navigationTitle("Custom line")
@@ -118,7 +152,8 @@ private struct CustomLineSheet: View {
                             name.trimmingCharacters(in: .whitespacesAndNewlines),
                             unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "each" : unit,
                             price,
-                            taxable
+                            taxable,
+                            quantity
                         )
                         dismiss()
                     }

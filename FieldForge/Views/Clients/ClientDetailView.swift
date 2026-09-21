@@ -7,6 +7,9 @@ struct ClientDetailView: View {
     @State private var showEdit = false
     @State private var showNewJob = false
     @State private var confirmDelete = false
+    @State private var createdJob: Job?
+    @State private var showCreatedJob = false
+    @State private var savedJobThisSession = false
     @Environment(\.dismiss) private var dismiss
 
     private var jobs: [Job] {
@@ -85,8 +88,21 @@ struct ClientDetailView: View {
         .sheet(isPresented: $showEdit) {
             ClientFormView(client: client)
         }
-        .sheet(isPresented: $showNewJob) {
-            JobFormView(job: nil, lockedClient: client)
+        .sheet(isPresented: $showNewJob, onDismiss: {
+            if savedJobThisSession {
+                showCreatedJob = true
+            }
+            savedJobThisSession = false
+        }) {
+            JobFormView(job: nil, lockedClient: client) { job in
+                createdJob = job
+                savedJobThisSession = true
+            }
+        }
+        .navigationDestination(isPresented: $showCreatedJob) {
+            if let createdJob {
+                JobDetailView(job: createdJob)
+            }
         }
         .confirmationDialog(
             "Delete \(client.name)?",

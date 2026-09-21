@@ -93,16 +93,16 @@ enum InvoiceReminders {
     private static func rebuild(_ invoices: [Invoice], center: UNUserNotificationCenter) async -> Int {
         let now = Date.now
         let calendar = Calendar.current
-        var alerts: [PendingAlert] = []
+        var pending: [PendingAlert] = []
         for invoice in invoices {
-            if alerts.count >= requestCap { break }
+            if pending.count >= requestCap { break }
             for alert in alerts(for: invoice, now: now, calendar: calendar) {
-                if alerts.count >= requestCap { break }
-                alerts.append(alert)
+                if pending.count >= requestCap { break }
+                pending.append(alert)
             }
         }
         await removeOurs(center)
-        for alert in alerts {
+        for alert in pending {
             let content = UNMutableNotificationContent()
             content.title = alert.title
             content.body = alert.body
@@ -110,7 +110,7 @@ enum InvoiceReminders {
             let trigger = UNCalendarNotificationTrigger(dateMatching: alert.components, repeats: alert.repeats)
             try? await center.add(UNNotificationRequest(identifier: alert.identifier, content: content, trigger: trigger))
         }
-        return alerts.count
+        return pending.count
     }
 
     private static func alerts(for invoice: Invoice, now: Date, calendar: Calendar) -> [PendingAlert] {

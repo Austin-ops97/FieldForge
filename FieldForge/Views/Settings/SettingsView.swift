@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
@@ -20,6 +21,7 @@ struct SettingsView: View {
 
 private struct SettingsForm: View {
     @Environment(\.modelContext) private var context
+    @Environment(AppLock.self) private var appLock
     @Bindable var profile: BusinessProfile
 
     @State private var businessName = ""
@@ -41,7 +43,13 @@ private struct SettingsForm: View {
     @State private var confirmRestore = false
     @State private var noticeTitle = ""
     @State private var noticeMessage = ""
+    @State private var noticeOffersSettings = false
     @State private var showNotice = false
+    @State private var lockOn = false
+    @State private var remindersOn = false
+    @State private var reminderCount = 0
+    @State private var lockBusy = false
+    @State private var remindersBusy = false
 
     private var canSave: Bool {
         businessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -65,10 +73,23 @@ private struct SettingsForm: View {
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
                 .accessibilityLabel("Restore")
+                Toggle(isOn: lockBinding) {
+                    Label("App Lock", systemImage: "lock")
+                }
+                .accessibilityLabel("App Lock")
+                Toggle(isOn: remindersBinding) {
+                    Label("Overdue reminders", systemImage: "bell")
+                }
+                .accessibilityLabel("Overdue reminders")
+                if remindersOn {
+                    Text(reminderCaption)
+                        .font(ForgeType.caption)
+                        .foregroundStyle(.secondary)
+                }
             } header: {
                 Text("On this iPhone")
             } footer: {
-                Text("All data stays on this device. There is no account. FieldForge works offline, including in airplane mode. Backup makes one file you can keep in Files. Restore replaces the shop on this iPhone.")
+                Text("All data stays on this device. There is no account. FieldForge works offline, including in airplane mode. Backup makes one file you can keep in Files. Restore replaces the shop on this iPhone. App Lock uses Face ID, Touch ID, or the passcode, and asks again after you leave. A short switch stays unlocked. Overdue reminders are 8:00 AM notifications scheduled on this iPhone.")
             }
             Section("Business") {
                 TextField("Company name", text: $businessName)
@@ -133,10 +154,18 @@ private struct SettingsForm: View {
                     .foregroundStyle(.secondary)
             }
             Section("About") {
+                LabeledContent("App", value: "FieldForge")
                 LabeledContent("Version", value: version)
-                Text("No account. No network. GPS, texting, QuickBooks, and card payments are not part of this build.")
+                Text("FieldForge stays on this iPhone. No account. No network.")
                     .font(ForgeType.secondary)
                     .foregroundStyle(.secondary)
+                Button {
+                    openSystemSettings()
+                } label: {
+                    Label("Camera, microphone, and photos", systemImage: "gear")
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }
+                .accessibilityLabel("Camera, microphone, and photos")
             }
         }
         .safeAreaInset(edge: .bottom) {
@@ -167,6 +196,7 @@ private struct SettingsForm: View {
                 saveProfile()
                 OperationalData.removeShopWork(in: context)
                 SeedData.loadDemo(trade, in: context)
+                Task { reminderCount = await InvoiceReminders.reschedule(in: context) }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
@@ -183,6 +213,9 @@ private struct SettingsForm: View {
             Text("This removes the customers, jobs, quotes, invoices, photos, voice notes, and price book on this iPhone, and replaces the business profile. \(pendingRestore?.summary ?? "")")
         }
         .alert(noticeTitle, isPresented: $showNotice) {
+            if noticeOffersSettings {
+                Button("Open Settings") { openSystemSettings() }
+            }
             Button("OK", role: .cancel) {}
         } message: {
             Text(noticeMessage)
@@ -194,9 +227,7 @@ private struct SettingsForm: View {
                     inspectBackup(url)
                 }
             case .failure:
-                noticeTitle = "Couldn’t restore"
-                noticeMessage = "That file couldn’t be opened."
-                showNotice = true
+                presentNotice("Couldn’t restore", "That file couldn’t be opened.")
             }
         }
         .fileShareSheet(
@@ -211,39 +242,108 @@ private struct SettingsForm: View {
         do {
             shareURL = try ShopBackup.makeZip(in: context)
         } catch {
-            noticeTitle = "Couldn’t make the backup"
-            noticeMessage = error.localizedDescription
-            showNotice = true
+            presentNotice("Couldn’t make the backup", error.localizedDescription)
         }
+    }
+
+    private func setLock(_ enabled: Bool) async {
+        guard lockBusy == false else { return }
+        lockBusy = true
+        defer { lockBusy = false }
+        if let message = await appLock.setEnabled(enabled) {
+            lockOn = appLock.isEnabled
+            presentNotice("App Lock stayed off", message)
+            return
+        }
+        lockOn = appLock.isEnabled
+    }
+
+    private func setReminders(_ enabled: Bool) async {
+        guard remindersBusy == false else { return }
+        remindersBusy = true
+        defer { remindersBusy = false }
+        do {
+            reminderCount = try await InvoiceReminders.setEnabled(enabled, in: context)
+            remindersOn = InvoiceReminders.isEnabled
+            if enabled {
+                presentNotice("Reminders on", reminderCaption)
+            }
+        } catch let error as InvoiceReminders.EnableFailure {
+            remindersOn = InvoiceReminders.isEnabled
+            presentNotice("Reminders stay off", error.localizedDescription, offerSettings: error.opensSettings)
+        } catch {
+            remindersOn = InvoiceReminders.isEnabled
+            presentNotice("Reminders stay off", error.localizedDescription)
+        }
+    }
+
+    private var reminderCaption: String {
+        if reminderCount == 0 {
+            return "No invoice needs a reminder right now. FieldForge schedules one for 8:00 AM when an invoice is due or overdue."
+        }
+        if reminderCount == 1 {
+            return "1 reminder is scheduled for 8:00 AM on this iPhone."
+        }
+        return "\(reminderCount) reminders are scheduled for 8:00 AM on this iPhone."
+    }
+
+    private func presentNotice(_ title: String, _ message: String, offerSettings: Bool = false) {
+        noticeTitle = title
+        noticeMessage = message
+        noticeOffersSettings = offerSettings
+        showNotice = true
+    }
+
+    private func openSystemSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     private func inspectBackup(_ url: URL) {
-        do {
-            pendingRestore = try ShopBackup.inspect(url)
-            Task { @MainActor in
+        Task { @MainActor in
+            do {
+                let preview = try ShopBackup.inspect(url)
+                try? await Task.sleep(for: .milliseconds(400))
+                pendingRestore = preview
                 confirmRestore = true
+            } catch {
+                pendingRestore = nil
+                presentNotice("Couldn’t restore", error.localizedDescription)
             }
-        } catch {
-            pendingRestore = nil
-            noticeTitle = "Couldn’t restore"
-            noticeMessage = error.localizedDescription
-            showNotice = true
         }
     }
 
+    private var lockBinding: Binding<Bool> {
+        Binding(
+            get: { lockOn },
+            set: { newValue in
+                lockOn = newValue
+                Task { await setLock(newValue) }
+            }
+        )
+    }
+
+    private var remindersBinding: Binding<Bool> {
+        Binding(
+            get: { remindersOn },
+            set: { newValue in
+                remindersOn = newValue
+                Task { await setReminders(newValue) }
+            }
+        )
+    }
+
     private func applyRestore() {
-        guard let pendingRestore else { return }
+        guard let preview = pendingRestore else { return }
+        pendingRestore = nil
         do {
-            let report = try ShopBackup.restore(pendingRestore, into: profile, in: context)
+            let report = try ShopBackup.restore(preview, into: profile, in: context)
             reloadForm()
-            noticeTitle = "Restored"
-            noticeMessage = report.message
+            presentNotice("Restored", report.message)
+            Task { reminderCount = await InvoiceReminders.reschedule(in: context) }
         } catch {
-            noticeTitle = "Couldn’t restore"
-            noticeMessage = error.localizedDescription
+            presentNotice("Couldn’t restore", error.localizedDescription)
         }
-        self.pendingRestore = nil
-        showNotice = true
     }
 
     private func reloadForm() {
@@ -276,6 +376,9 @@ private struct SettingsForm: View {
         taxBasisPoints = profile.taxBasisPoints
         quoteNotes = profile.defaultQuoteNotes
         terms = profile.defaultInvoiceTerms
+        lockOn = appLock.isEnabled
+        remindersOn = InvoiceReminders.isEnabled
+        Task { reminderCount = await InvoiceReminders.pendingCount() }
     }
 
     private func saveProfile() {

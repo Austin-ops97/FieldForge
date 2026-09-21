@@ -118,6 +118,7 @@ struct ClientDetailView: View {
             Button("Delete client and jobs", role: .destructive) {
                 context.delete(client)
                 try? context.save()
+                Task { await InvoiceReminders.reschedule(in: context) }
                 dismiss()
             }
             Button("Cancel", role: .cancel) {}

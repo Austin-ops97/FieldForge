@@ -84,6 +84,7 @@ enum QuoteActions {
         context.insert(invoice)
         invoice.quote = quote
         try? context.save()
+        Task { await InvoiceReminders.reschedule(in: context) }
         return invoice
     }
 
@@ -100,6 +101,7 @@ enum QuoteActions {
         invoice.paidAt = .now
         invoice.needsSync = true
         try? context.save()
+        Task { await InvoiceReminders.reschedule(in: context) }
     }
 
     private static func nextSortIndex(in quote: Quote) -> Int {

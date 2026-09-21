@@ -78,10 +78,14 @@ FieldForge does not sign in, sync, or call a server. Customers, jobs, quotes, in
 Backup and restore, on a simulator:
 
 1. Open **Today** and tap the gear.
-2. Tap **Backup**. The share sheet opens a `FieldForge-Backup-YYYY-MM-DD.zip`. Save it to Files.
+2. Tap **Backup**. The share sheet opens a `FieldForge-Backup-YYYY-MM-DD-HHMM.zip`. Save it to Files.
 3. Change something small, such as a client note, so you can see the restore land.
 4. Tap **Restore**, choose that zip, and confirm **Replace with backup**.
 5. The business name, Maria Chen, Q-1042, and INV-220 are back. A damaged or unrelated file shows an error and leaves the current shop in place.
+
+App Lock, overdue reminders, and About are in that same Settings screen. Lock and reminders stay off until you turn them on. Both stay on this iPhone.
+
+First launch puts **Load Riverside Plumbing demo** at the top. **Continue** still needs a company name and your name, and starts an empty shop with a price book.
 
 ## Out of scope
 

@@ -3,11 +3,13 @@ import SwiftUI
 
 @main
 struct FieldForgeApp: App {
+    @State private var appLock = AppLock()
     private let container: ModelContainer = ForgeStore.makeContainer()
 
     var body: some Scene {
         WindowGroup {
             RootView()
+                .environment(appLock)
         }
         .modelContainer(container)
     }
@@ -15,6 +17,8 @@ struct FieldForgeApp: App {
 
 private struct RootView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(AppLock.self) private var appLock
     @Query private var profiles: [BusinessProfile]
     @State private var didCheckLegacy = false
 
@@ -28,9 +32,21 @@ private struct RootView: View {
                 MainTabView()
             }
         }
+        .accessibilityHidden(appLock.isLocked)
+        .overlay {
+            if appLock.isLocked {
+                AppLockCover()
+            }
+        }
         .task {
             BusinessMigration.adoptLegacyShopIfNeeded(in: context)
             didCheckLegacy = true
+        }
+        .onChange(of: scenePhase) { _, phase in
+            appLock.sceneChanged(phase)
+            if phase == .active {
+                Task { await InvoiceReminders.reschedule(in: context) }
+            }
         }
     }
 }

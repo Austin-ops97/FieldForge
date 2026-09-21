@@ -13,7 +13,6 @@ struct OnboardingView: View {
     @State private var taxBasisPoints = 825
     @State private var quoteNotes = ""
     @State private var terms = "Payment due in 14 days."
-    @State private var loadDemo = false
     @State private var didFinish = false
 
     private var canContinue: Bool {
@@ -24,6 +23,27 @@ struct OnboardingView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    Button {
+                        useRiversideDemo()
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("Load Riverside Plumbing demo", systemImage: "wrench.and.screwdriver")
+                                .font(ForgeType.rowTitle)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Text("Maria Chen, quote Q-1042, and overdue invoice INV-220.")
+                                .font(ForgeType.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.vertical, 6)
+                    }
+                    .accessibilityLabel("Load Riverside Plumbing demo")
+                } header: {
+                    Text("Try the sample shop")
+                } footer: {
+                    Text("Opens the Riverside Plumbing demo. Or enter your company below and tap Continue for an empty shop with a price book. Everything stays on this iPhone.")
+                }
                 Section {
                     Text("Your name goes on every quote and invoice.")
                         .font(ForgeType.secondary)
@@ -48,7 +68,7 @@ struct OnboardingView: View {
                         }
                     }
                     .padding(.vertical, 4)
-                    Text("Continuing adds a starter price book for this trade. Sample customers are optional.")
+                    Text("Continue adds a starter price book for this trade.")
                         .font(ForgeType.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -62,22 +82,11 @@ struct OnboardingView: View {
                     TextField("Terms on quotes and invoices", text: $terms, axis: .vertical)
                         .lineLimit(2...4)
                 }
-                Section {
-                    Toggle("Load sample customers and jobs", isOn: $loadDemo)
-                    Button {
-                        useRiversideDemo()
-                    } label: {
-                        Label("Load Riverside Plumbing demo", systemImage: "wrench.and.screwdriver")
-                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                    }
-                } footer: {
-                    Text("The Riverside demo is Maria Chen, a draft quote, and an overdue invoice. Your own shop can start empty except for the price book. FieldForge works offline. Everything stays on this iPhone.")
-                }
             }
             .navigationTitle("Set up FieldForge")
             .safeAreaInset(edge: .bottom) {
                 FormSaveBar(title: "Continue", enabled: canContinue) {
-                    finish(demo: loadDemo)
+                    finish(demo: false)
                 }
             }
         }
@@ -93,7 +102,6 @@ struct OnboardingView: View {
         taxBasisPoints = 825
         quoteNotes = ""
         terms = "Payment due in 14 days."
-        loadDemo = true
         finish(demo: true)
     }
 

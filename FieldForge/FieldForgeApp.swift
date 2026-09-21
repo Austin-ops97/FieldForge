@@ -15,18 +15,22 @@ struct FieldForgeApp: App {
 
 private struct RootView: View {
     @Environment(\.modelContext) private var context
-    @Query private var shops: [ShopProfile]
+    @Query private var profiles: [BusinessProfile]
+    @State private var didCheckLegacy = false
 
     var body: some View {
         Group {
-            if shops.isEmpty {
+            if profiles.isEmpty && didCheckLegacy == false {
                 ShopLoadingView()
+            } else if profiles.isEmpty {
+                OnboardingView()
             } else {
                 MainTabView()
             }
         }
         .task {
-            SeedData.seedIfNeeded(context: context)
+            BusinessMigration.adoptLegacyShopIfNeeded(in: context)
+            didCheckLegacy = true
         }
     }
 }

@@ -17,11 +17,12 @@ struct PDFModel {
     var tax: String
     var total: String
     var notes: String
+    var terms: String
 }
 
 enum FieldPDF {
     @MainActor
-    static func quoteFile(_ quote: Quote, shop: ShopProfile?) -> URL? {
+    static func quoteFile(_ quote: Quote, shop: BusinessProfile?) -> URL? {
         let totals = MoneyMath.summarize(items: quote.lineItems, taxBasisPoints: quote.taxBasisPoints)
         let model = PDFModel(
             shopName: shop?.businessName ?? "FieldForge",
@@ -39,13 +40,14 @@ enum FieldPDF {
             taxLabel: "Tax \(FieldFormat.taxPercent(basisPoints: quote.taxBasisPoints))",
             tax: FieldFormat.money(totals.tax),
             total: FieldFormat.money(totals.total),
-            notes: quote.notes
+            notes: quote.notes,
+            terms: shop?.defaultInvoiceTerms ?? ""
         )
         return write(model, filename: "\(quote.number).pdf")
     }
 
     @MainActor
-    static func invoiceFile(_ invoice: Invoice, shop: ShopProfile?) -> URL? {
+    static func invoiceFile(_ invoice: Invoice, shop: BusinessProfile?) -> URL? {
         let quote = invoice.quote
         let totals = MoneyMath.summarize(items: quote?.lineItems ?? [], taxBasisPoints: quote?.taxBasisPoints ?? 0)
         let model = PDFModel(
@@ -64,14 +66,17 @@ enum FieldPDF {
             taxLabel: "Tax \(FieldFormat.taxPercent(basisPoints: quote?.taxBasisPoints ?? 0))",
             tax: FieldFormat.money(totals.tax),
             total: FieldFormat.money(totals.total),
-            notes: quote?.notes ?? ""
+            notes: quote?.notes ?? "",
+            terms: shop?.defaultInvoiceTerms ?? ""
         )
         return write(model, filename: "\(invoice.number).pdf")
     }
 
-    private static func ownerLine(_ shop: ShopProfile?) -> String {
-        guard let shop else { return "Solo field OS" }
-        return "\(shop.ownerName) · \(shop.trade) · \(shop.cityLine)"
+    private static func ownerLine(_ shop: BusinessProfile?) -> String {
+        guard let shop else { return "Field service" }
+        return [shop.ownerName, shop.trade, shop.cityLine, shop.phone, shop.email]
+            .filter { $0.isEmpty == false }
+            .joined(separator: " · ")
     }
 
     private static func clientDetail(_ client: Client?) -> String {
@@ -145,6 +150,11 @@ private final class PDFCanvas {
             gap(16)
             text("Notes", size: 10, weight: .semibold, color: .secondaryLabel)
             text(model.notes, size: 12, color: .darkText)
+        }
+        if model.terms.isEmpty == false {
+            gap(12)
+            text("Terms", size: 10, weight: .semibold, color: .secondaryLabel)
+            text(model.terms, size: 12, color: .darkText)
         }
         gap(22)
         rule()

@@ -19,6 +19,49 @@ final class ShopProfile {
 }
 
 @Model
+final class BusinessProfile {
+    var businessName: String
+    var ownerName: String
+    var trade: String
+    var phone: String
+    var email: String
+    var cityLine: String
+    var taxBasisPoints: Int
+    var defaultQuoteNotes: String
+    var defaultInvoiceTerms: String
+    var createdAt: Date
+
+    var tradeKit: TradeKit {
+        get { TradeKit(rawValue: trade) ?? .plumbing }
+        set { trade = newValue.rawValue }
+    }
+
+    init(
+        businessName: String,
+        ownerName: String,
+        trade: String,
+        phone: String = "",
+        email: String = "",
+        cityLine: String = "",
+        taxBasisPoints: Int = 825,
+        defaultQuoteNotes: String = "",
+        defaultInvoiceTerms: String = "Payment due in 14 days.",
+        createdAt: Date = .now
+    ) {
+        self.businessName = businessName
+        self.ownerName = ownerName
+        self.trade = trade
+        self.phone = phone
+        self.email = email
+        self.cityLine = cityLine
+        self.taxBasisPoints = taxBasisPoints
+        self.defaultQuoteNotes = defaultQuoteNotes
+        self.defaultInvoiceTerms = defaultInvoiceTerms
+        self.createdAt = createdAt
+    }
+}
+
+@Model
 final class Client {
     var name: String
     var phone: String
@@ -58,6 +101,7 @@ final class Job {
     var address: String
     var notes: String
     var voiceMemoCaption: String
+    var completedAt: Date?
     var createdAt: Date
     var needsSync: Bool
 
@@ -65,6 +109,9 @@ final class Job {
 
     @Relationship(deleteRule: .cascade, inverse: \JobPhoto.job)
     var photos: [JobPhoto] = []
+
+    @Relationship(deleteRule: .cascade, inverse: \VoiceNote.job)
+    var voiceNotes: [VoiceNote] = []
 
     @Relationship(deleteRule: .cascade, inverse: \Quote.job)
     var quotes: [Quote] = []
@@ -81,6 +128,7 @@ final class Job {
         address: String,
         notes: String,
         voiceMemoCaption: String = "",
+        completedAt: Date? = nil,
         createdAt: Date = .now,
         needsSync: Bool = false
     ) {
@@ -90,6 +138,7 @@ final class Job {
         self.address = address
         self.notes = notes
         self.voiceMemoCaption = voiceMemoCaption
+        self.completedAt = completedAt
         self.createdAt = createdAt
         self.needsSync = needsSync
     }
@@ -99,12 +148,28 @@ final class Job {
 final class JobPhoto {
     var caption: String
     var symbolName: String
+    var fileName: String
     var createdAt: Date
     var job: Job?
 
-    init(caption: String, symbolName: String, createdAt: Date = .now) {
+    init(caption: String, symbolName: String = "photo", fileName: String = "", createdAt: Date = .now) {
         self.caption = caption
         self.symbolName = symbolName
+        self.fileName = fileName
+        self.createdAt = createdAt
+    }
+}
+
+@Model
+final class VoiceNote {
+    var fileName: String
+    var duration: Double
+    var createdAt: Date
+    var job: Job?
+
+    init(fileName: String, duration: Double, createdAt: Date = .now) {
+        self.fileName = fileName
+        self.duration = duration
         self.createdAt = createdAt
     }
 }

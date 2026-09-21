@@ -11,7 +11,7 @@ The visual pass is a quiet business dashboard: shared type, an 8/12/16/20/24 spa
 3. Select an iPhone simulator running iOS 17 or newer.
 4. Run (⌘R).
 
-The first launch seeds **Riverside Plumbing** (Alex Rivera, a solo plumber in Austin). After that, the shop stays in the simulator’s SwiftData store. Delete the app from the simulator to load the sample shop again.
+The first launch asks you to set the business profile. Tap **Load Riverside Plumbing demo** to get the sample shop (Alex Rivera, Austin). If this iPhone already had that shop, FieldForge keeps it and skips setup. Delete the app to see onboarding again.
 
 If Xcode asks for a development team, select the FieldForge target, open **Signing & Capabilities**, and choose your team. Simulator builds can use local signing.
 
@@ -19,7 +19,7 @@ If Xcode asks for a development team, select the FieldForge target, open **Signi
 
 This is the path to try first:
 
-1. Open the **Clients** tab and tap **Maria Chen**.
+1. On a fresh install, tap **Load Riverside Plumbing demo**. Then open the **Clients** tab and tap **Maria Chen**.
 2. Open the job **Kitchen faucet replacement**.
 3. Open quote **Q-1042** (Draft). It already has labor, a faucet, and supply lines.
 4. Tap **Accept quote**. FieldForge creates an invoice and opens it.
@@ -35,10 +35,22 @@ New job and new quote, without dead ends:
 
 Other stops:
 
-- **Jobs**: status filters, notes, photo placeholders, a voice-note stub, and **Create quote**.
-- **Price Book**: eight plumbing prices. Tap a row to edit, or use **+** to add one.
+- **Jobs**: status filters, notes, camera or library photos, voice notes, and **Create quote**.
+- **Price Book**: starter prices for the shop’s trade. Tap a row to edit, or use **+** to add one.
 - Empty lists explain what’s missing and offer a button to add a record or clear the filter.
-- **Sync now** on Today only clears the on-device “waiting to sync” marks.
+- **Sync now** on Today, and **Mark changes synced** in Settings, only clear the on-device “waiting to sync” marks.
+
+## Foundation pack
+
+- **Settings** (gear on Today): company, owner, trade, tax rate, default quote note, invoice terms, phone, and email. Quote and invoice PDFs use this profile on the letterhead.
+- **Onboarding** can start from your own trade’s price book, or load sample customers. **Reset demo data** in Settings replaces customers and jobs after a confirm, and leaves the profile in place.
+- **Trade kits**: Plumbing, HVAC, Electrical, and Handyman. Replacing the price book asks first and does not delete jobs.
+- **Search** (magnifying glass on Today, Clients, and Jobs) finds clients, jobs, quote numbers, and invoice numbers.
+- **Week** (Today or Jobs) lists the current week by day. Empty days stay visible. Previous and next week are in the toolbar.
+- **Reports** (Today) shows unpaid and overdue totals, paid this week and month, and jobs marked done. Export invoices or clients as CSV from Reports or from Settings → Money reports.
+- Job photos and voice notes are real files on the iPhone. The camera, photo library, and microphone usage strings are in the generated Info.plist. If access is off, the job screen says so and can open Settings.
+
+New quotes use the tax rate and default note from Settings. The Riverside sample quotes stay at 8.25%, so **INV-220** remains **$534.76**.
 
 ## Sample shop
 
@@ -54,8 +66,8 @@ Tax on seeded quotes is 8.25%.
 
 ## Project layout
 
-- `FieldForge/Models` — SwiftData models, totals, seed data, quote actions
-- `FieldForge/Views` — Today, Clients, Jobs, Quotes, Invoices, Price Book
+- `FieldForge/Models` — SwiftData models, business profile, trade kits, totals, demo data
+- `FieldForge/Views` — Today, Clients, Jobs, Quotes, Invoices, Price Book, Settings, Search, Week, Reports
 - `FieldForge/Theme` — ink, accent, type styles, spacing, and card chrome
 
 Tabs are **Today**, **Clients**, **Jobs**, and **Price Book**. Quotes and invoices open from a job or from money owed.

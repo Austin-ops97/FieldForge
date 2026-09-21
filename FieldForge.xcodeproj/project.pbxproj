@@ -257,6 +257,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = FieldForge;
+				INFOPLIST_KEY_NSCameraUsageDescription = "FieldForge uses the camera to photograph the job site.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "FieldForge uses the microphone to record voice notes on a job.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FieldForge uses your photo library to attach pictures to a job.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -291,6 +294,9 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = FieldForge;
+				INFOPLIST_KEY_NSCameraUsageDescription = "FieldForge uses the camera to photograph the job site.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "FieldForge uses the microphone to record voice notes on a job.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "FieldForge uses your photo library to attach pictures to a job.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

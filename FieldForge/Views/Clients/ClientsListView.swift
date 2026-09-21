@@ -47,7 +47,13 @@ struct ClientsListView: View {
             .navigationTitle("Clients")
             .searchable(text: $search, prompt: "Name, street, or phone")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink {
+                        GlobalSearchView()
+                    } label: {
+                        Image(systemName: "text.magnifyingglass")
+                    }
+                    .accessibilityLabel("Search all")
                     Button {
                         showNew = true
                     } label: {

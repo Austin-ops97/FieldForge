@@ -153,6 +153,7 @@ struct JobFormView: View {
             job.address = resolvedAddress
             job.notes = trimmedNotes
             job.client = client
+            applyCompletion(job)
             job.needsSync = true
             saved = job
         } else {
@@ -162,6 +163,7 @@ struct JobFormView: View {
                 scheduledAt: scheduledAt,
                 address: resolvedAddress,
                 notes: trimmedNotes,
+                completedAt: status == .done ? .now : nil,
                 needsSync: true
             )
             context.insert(newJob)
@@ -171,5 +173,13 @@ struct JobFormView: View {
         try? context.save()
         onSave(saved)
         dismiss()
+    }
+
+    private func applyCompletion(_ job: Job) {
+        if status == .done {
+            if job.completedAt == nil { job.completedAt = .now }
+        } else {
+            job.completedAt = nil
+        }
     }
 }

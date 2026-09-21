@@ -24,6 +24,20 @@ struct PDFShareButton: View {
 extension View {
     /// Presents the system share sheet for a PDF written on this iPhone.
     func pdfShareSheet(url: Binding<URL?>, failed: Binding<Bool>) -> some View {
+        fileShareSheet(
+            url: url,
+            failed: failed,
+            failureTitle: "Couldn't create the PDF",
+            failureMessage: "The quote or invoice is still on this iPhone. Try sharing again."
+        )
+    }
+
+    func fileShareSheet(
+        url: Binding<URL?>,
+        failed: Binding<Bool>,
+        failureTitle: String,
+        failureMessage: String
+    ) -> some View {
         sheet(
             isPresented: Binding(
                 get: { url.wrappedValue != nil },
@@ -35,10 +49,10 @@ extension View {
                     .ignoresSafeArea()
             }
         }
-        .alert("Couldn't create the PDF", isPresented: failed) {
+        .alert(failureTitle, isPresented: failed) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("The quote or invoice is still on this iPhone. Try sharing again.")
+            Text(failureMessage)
         }
     }
 }

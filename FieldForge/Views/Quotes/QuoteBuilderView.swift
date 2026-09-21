@@ -3,7 +3,7 @@ import SwiftUI
 
 struct QuoteBuilderView: View {
     @Environment(\.modelContext) private var context
-    @Query private var shops: [ShopProfile]
+    @Query private var shops: [BusinessProfile]
     @Bindable var quote: Quote
 
     @State private var showAdd = false

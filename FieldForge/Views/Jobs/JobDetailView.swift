@@ -1,5 +1,8 @@
+import AVFoundation
+import PhotosUI
 import SwiftData
 import SwiftUI
+import UIKit
 
 struct JobDetailView: View {
     @Environment(\.modelContext) private var context
@@ -7,7 +10,9 @@ struct JobDetailView: View {
 
     @State private var showEdit = false
     @State private var selectedPhoto: JobPhoto?
-    @State private var showVoice = false
+    @State private var photoItem: PhotosPickerItem?
+    @State private var showCamera = false
+    @State private var cameraMessage: String?
     @State private var quoteToOpen: Quote?
     @State private var showNewQuote = false
 
@@ -32,10 +37,15 @@ struct JobDetailView: View {
                 .padding(.vertical, 4)
                 ChipFlow(spacing: 8) {
                     ForEach(JobStatus.allCases) { status in
-                        FilterChip(title: status.label, selected: job.status == status, tint: ForgeTheme.jobTint(status)) {
-                            job.status = status
-                            job.needsSync = true
-                        }
+                            FilterChip(title: status.label, selected: job.status == status, tint: ForgeTheme.jobTint(status)) {
+                                job.status = status
+                                if status == .done {
+                                    if job.completedAt == nil { job.completedAt = .now }
+                                } else {
+                                    job.completedAt = nil
+                                }
+                                job.needsSync = true
+                            }
                     }
                 }
                 .padding(.vertical, 4)
@@ -64,48 +74,39 @@ struct JobDetailView: View {
 
             Section("Photos") {
                 if photos.isEmpty {
-                    Text("No photos yet. These are placeholders until the camera lands.")
-                        .font(.subheadline)
+                    Text("Take a picture or choose one from your library. Photos stay on this iPhone with the job.")
+                        .font(ForgeType.secondary)
                         .foregroundStyle(.secondary)
                 } else {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 12) {
-                            ForEach(photos) { photo in
-                                Button {
-                                    selectedPhoto = photo
-                                } label: {
-                                    PhotoCard(photo: photo)
-                                }
-                                .buttonStyle(.plain)
+                    LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                        ForEach(photos) { photo in
+                            Button {
+                                selectedPhoto = photo
+                            } label: {
+                                JobPhotoThumbnail(photo: photo)
                             }
+                            .buttonStyle(.plain)
                         }
-                        .padding(.vertical, 4)
                     }
-                    .frame(height: 120)
+                    .padding(.vertical, 4)
                 }
                 Button {
-                    addPhotoPlaceholder()
+                    openCamera()
                 } label: {
-                    Label("Add photo placeholder", systemImage: "camera.fill")
+                    Label("Take photo", systemImage: "camera")
+                        .font(ForgeType.rowTitle)
                         .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                 }
+                .buttonStyle(.borderless)
+                PhotosPicker(selection: $photoItem, matching: .images) {
+                    Label("Choose photo", systemImage: "photo")
+                        .font(ForgeType.rowTitle)
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }
+                .buttonStyle(.borderless)
             }
 
-            Section("Voice note") {
-                Button {
-                    if job.voiceMemoCaption.isEmpty {
-                        job.voiceMemoCaption = "0:12 · note saved on this iPhone"
-                        job.needsSync = true
-                    }
-                    showVoice = true
-                } label: {
-                    Label(
-                        job.voiceMemoCaption.isEmpty ? "Save a voice-note stub" : job.voiceMemoCaption,
-                        systemImage: "mic.fill"
-                    )
-                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                }
-            }
+            VoiceNotesSection(job: job)
 
             Section("Quotes") {
                 if quotes.isEmpty {
@@ -154,10 +155,33 @@ struct JobDetailView: View {
             JobFormView(job: job)
         }
         .sheet(item: $selectedPhoto) { photo in
-            PhotoPlaceholderSheet(photo: photo)
+            PhotoViewer(photo: photo) {
+                deletePhoto(photo)
+            }
         }
-        .sheet(isPresented: $showVoice) {
-            VoiceNoteSheet(caption: job.voiceMemoCaption)
+        .sheet(isPresented: $showCamera) {
+            CameraPicker { image in
+                storePhoto(image)
+            }
+        }
+        .alert("Camera", isPresented: Binding(
+            get: { cameraMessage != nil },
+            set: { if $0 == false { cameraMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+            if AVCaptureDevice.authorizationStatus(for: .video) == .denied {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) {
+                        UIApplication.shared.open(url)
+                    }
+                }
+            }
+        } message: {
+            Text(cameraMessage ?? "")
+        }
+        .onChange(of: photoItem) { _, item in
+            guard let item else { return }
+            Task { await importLibraryPhoto(item) }
         }
         .navigationDestination(isPresented: $showNewQuote) {
             if let quoteToOpen {
@@ -166,99 +190,63 @@ struct JobDetailView: View {
         }
     }
 
-    private func addPhotoPlaceholder() {
-        let symbols = ["camera.fill", "drop.fill", "wrench.fill", "photo.fill"]
+    private func openCamera() {
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            cameraMessage = "This device has no camera. Choose a photo from the library instead."
+            return
+        }
+        switch AVCaptureDevice.authorizationStatus(for: .video) {
+        case .authorized:
+            showCamera = true
+        case .notDetermined:
+            AVCaptureDevice.requestAccess(for: .video) { allowed in
+                Task { @MainActor in
+                    if allowed {
+                        showCamera = true
+                    } else {
+                        cameraMessage = "Camera access is off. Turn it on in Settings to photograph the job."
+                    }
+                }
+            }
+        default:
+            cameraMessage = "Camera access is off. Turn it on in Settings to photograph the job."
+        }
+    }
+
+    private func importLibraryPhoto(_ item: PhotosPickerItem) async {
+        defer { photoItem = nil }
+        do {
+            if let picked = try await item.loadTransferable(type: PickedPhoto.self) {
+                storePhoto(picked.image)
+                return
+            }
+            cameraMessage = "That photo couldn't be added. Try another one."
+        } catch {
+            cameraMessage = "That photo couldn't be added. Try another one."
+        }
+    }
+
+    private func storePhoto(_ image: UIImage) {
+        guard let fileName = MediaFiles.saveJPEG(image) else {
+            cameraMessage = "The photo couldn't be saved on this iPhone."
+            return
+        }
         let photo = JobPhoto(
             caption: "Site photo \(photos.count + 1)",
-            symbolName: symbols[photos.count % symbols.count]
+            symbolName: "photo",
+            fileName: fileName
         )
         context.insert(photo)
         photo.job = job
         job.needsSync = true
         try? context.save()
     }
-}
 
-private struct PhotoCard: View {
-    let photo: JobPhoto
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: photo.symbolName)
-                .font(.title2)
-                .foregroundStyle(ForgeTheme.ink)
-            Text(photo.caption)
-                .font(ForgeType.caption)
-                .foregroundStyle(.primary)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-        }
-        .frame(width: 132, height: 112)
-        .forgeCard()
-    }
-}
-
-private struct PhotoPlaceholderSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let photo: JobPhoto
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 18) {
-                Image(systemName: photo.symbolName)
-                    .font(.system(size: 56, weight: .medium))
-                    .foregroundStyle(ForgeTheme.ink)
-                    .frame(width: 160, height: 160)
-                    .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: ForgeTheme.Radius.l, style: .continuous))
-                Text(photo.caption)
-                    .font(.title3.weight(.semibold))
-                Text("Photo placeholder. The full app keeps pictures on the phone and syncs them later.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                Spacer()
-            }
-            .padding(24)
-            .navigationTitle("Photo")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-}
-
-private struct VoiceNoteSheet: View {
-    @Environment(\.dismiss) private var dismiss
-    let caption: String
-
-    var body: some View {
-        NavigationStack {
-            VStack(spacing: 16) {
-                Image(systemName: "waveform")
-                    .font(.system(size: 44, weight: .medium))
-                    .foregroundStyle(ForgeTheme.ink)
-                Text(caption)
-                    .font(.headline)
-                Text("Playback is a stub. The note is stored with the job on this iPhone.")
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                Spacer()
-            }
-            .padding(24)
-            .navigationTitle("Voice note")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
-        }
-        .presentationDetents([.medium])
+    private func deletePhoto(_ photo: JobPhoto) {
+        MediaFiles.remove(photo.fileName)
+        context.delete(photo)
+        job.needsSync = true
+        try? context.save()
     }
 }
 

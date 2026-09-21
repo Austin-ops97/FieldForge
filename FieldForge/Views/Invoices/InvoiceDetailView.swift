@@ -3,7 +3,7 @@ import SwiftUI
 
 struct InvoiceDetailView: View {
     @Environment(\.modelContext) private var context
-    @Query private var shops: [ShopProfile]
+    @Query private var shops: [BusinessProfile]
     @Bindable var invoice: Invoice
     @State private var shareURL: URL?
     @State private var shareFailed = false

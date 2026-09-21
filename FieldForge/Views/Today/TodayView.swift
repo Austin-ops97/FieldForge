@@ -3,7 +3,7 @@ import SwiftUI
 
 struct TodayView: View {
     @Environment(\.modelContext) private var context
-    @Query private var shops: [ShopProfile]
+    @Query private var shops: [BusinessProfile]
     @Query(sort: \Job.scheduledAt) private var jobs: [Job]
     @Query private var invoices: [Invoice]
     @Query private var clients: [Client]
@@ -16,7 +16,7 @@ struct TodayView: View {
     @State private var pendingRoute: TodayRoute?
     @State private var showSyncNote = false
 
-    private var shop: ShopProfile? { shops.first }
+    private var shop: BusinessProfile? { shops.first }
 
     private var openInvoices: [Invoice] {
         invoices
@@ -72,7 +72,19 @@ struct TodayView: View {
             .background(ForgeTheme.canvas)
             .navigationTitle("Today")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink {
+                        GlobalSearchView()
+                    } label: {
+                        Image(systemName: "text.magnifyingglass")
+                    }
+                    .accessibilityLabel("Search")
+                    NavigationLink {
+                        SettingsView()
+                    } label: {
+                        Image(systemName: "gearshape")
+                    }
+                    .accessibilityLabel("Settings")
                     Button {
                         SyncStub.markEverythingSynced(in: context)
                         showSyncNote = true
@@ -178,14 +190,41 @@ struct TodayView: View {
     }
 
     private var actionRow: some View {
-        HStack(spacing: ForgeTheme.Space.xs) {
-            QuietActionButton(title: "New Job", systemImage: "plus") {
-                showNewJob = true
+        VStack(spacing: ForgeTheme.Space.xs) {
+            HStack(spacing: ForgeTheme.Space.xs) {
+                QuietActionButton(title: "New Job", systemImage: "plus") {
+                    showNewJob = true
+                }
+                QuietActionButton(title: "New Quote", systemImage: "doc.text") {
+                    showNewQuote = true
+                }
             }
-            QuietActionButton(title: "New Quote", systemImage: "doc.text") {
-                showNewQuote = true
+            HStack(spacing: ForgeTheme.Space.xs) {
+                NavigationLink {
+                    WeekBoardView()
+                } label: {
+                    quietLinkLabel("Week", systemImage: "calendar")
+                }
+                NavigationLink {
+                    ReportsView()
+                } label: {
+                    quietLinkLabel("Reports", systemImage: "chart.bar")
+                }
             }
         }
+    }
+
+    private func quietLinkLabel(_ title: String, systemImage: String) -> some View {
+        Label(title, systemImage: systemImage)
+            .font(.headline)
+            .foregroundStyle(ForgeTheme.ink)
+            .frame(maxWidth: .infinity, minHeight: 52)
+            .padding(.horizontal, ForgeTheme.Space.xs)
+            .background(ForgeTheme.surface, in: RoundedRectangle(cornerRadius: ForgeTheme.Radius.m, style: .continuous))
+            .overlay {
+                RoundedRectangle(cornerRadius: ForgeTheme.Radius.m, style: .continuous)
+                    .strokeBorder(ForgeTheme.border, lineWidth: 1)
+            }
     }
 
     private func jobSection(title: String, jobs: [Job], empty: String) -> some View {

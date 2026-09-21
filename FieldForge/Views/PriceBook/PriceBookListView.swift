@@ -4,7 +4,7 @@ import SwiftUI
 struct PriceBookListView: View {
     @Environment(\.modelContext) private var context
     @Query(sort: \PriceBookItem.name) private var items: [PriceBookItem]
-    @Query private var shops: [ShopProfile]
+    @Query private var shops: [BusinessProfile]
 
     @State private var search = ""
     @State private var editing: PriceBookItem?

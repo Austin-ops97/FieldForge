@@ -5,11 +5,12 @@ import SwiftData
 enum QuoteActions {
     @discardableResult
     static func makeDraft(for job: Job, in context: ModelContext) -> Quote {
+        let profile = (try? context.fetch(FetchDescriptor<BusinessProfile>()))?.first
         let quote = Quote(
             number: DocumentNumbers.nextQuoteNumber(in: context),
             status: .draft,
-            taxBasisPoints: 825,
-            notes: "",
+            taxBasisPoints: profile?.taxBasisPoints ?? 825,
+            notes: profile?.defaultQuoteNotes ?? "",
             needsSync: true
         )
         context.insert(quote)

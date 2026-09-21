@@ -54,6 +54,16 @@ enum InvoiceStatus: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+enum TradeKit: String, CaseIterable, Identifiable {
+    case plumbing = "Plumbing"
+    case hvac = "HVAC"
+    case electrical = "Electrical"
+    case handyman = "Handyman"
+
+    var id: String { rawValue }
+    var label: String { rawValue }
+}
+
 enum PriceCategory: String, CaseIterable, Identifiable {
     case labor = "Labor"
     case materials = "Materials"

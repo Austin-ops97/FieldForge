@@ -3,20 +3,33 @@ import SwiftData
 
 @MainActor
 enum SeedData {
-    static func seedIfNeeded(context: ModelContext) {
-        let existing = (try? context.fetch(FetchDescriptor<ShopProfile>())) ?? []
-        guard existing.isEmpty else { return }
+    static func loadPriceKit(_ trade: TradeKit, in context: ModelContext) {
+        TradeKits.makeItems(for: trade).forEach(context.insert)
+        try? context.save()
+    }
 
+    static func loadDemo(_ trade: TradeKit, in context: ModelContext) {
+        if trade == .plumbing {
+            loadPlumbingDemo(in: context)
+        } else {
+            loadStarterDemo(trade, in: context)
+        }
+    }
+
+    static func replacePriceBook(with trade: TradeKit, in context: ModelContext) {
+        let items = (try? context.fetch(FetchDescriptor<PriceBookItem>())) ?? []
+        items.forEach(context.delete)
+        loadPriceKit(trade, in: context)
+    }
+
+    static func loadPlumbingDemo(in context: ModelContext) {
         let calendar = Calendar.current
         let now = Date.now
-
-        let shop = ShopProfile(
-            businessName: "Riverside Plumbing",
-            ownerName: "Alex Rivera",
-            trade: "Plumbing",
-            cityLine: "Austin, TX"
-        )
-        context.insert(shop)
+        let kit = TradeKits.makeItems(for: .plumbing)
+        kit.forEach(context.insert)
+        func priced(_ name: String) -> PriceBookItem {
+            kit.first { $0.name == name } ?? kit[0]
+        }
 
         let maria = Client(
             name: "Maria Chen",
@@ -43,65 +56,6 @@ enum SeedData {
             createdAt: days(from: now, -6, calendar: calendar)
         )
         [maria, james, priya].forEach(context.insert)
-
-        let serviceCall = price(
-            "Service call",
-            detail: "Trip charge and diagnostic.",
-            category: .labor,
-            unit: "trip",
-            price: 95
-        )
-        let faucetLabor = price(
-            "Faucet install labor",
-            detail: "Remove the old faucet and set the new one.",
-            category: .labor,
-            unit: "each",
-            price: 175
-        )
-        let moen = price(
-            "Moen pull-down kitchen faucet",
-            detail: "Brushed nickel, with spray hose.",
-            category: .materials,
-            unit: "each",
-            price: 168
-        )
-        let supplyLines = price(
-            "Braided supply lines",
-            detail: "Pair of stainless braided lines.",
-            category: .materials,
-            unit: "set",
-            price: 28
-        )
-        let flush = price(
-            "Water heater flush",
-            detail: "Drain, flush sediment, check the anode.",
-            category: .labor,
-            unit: "each",
-            price: 149
-        )
-        let snake = price(
-            "Main drain snake",
-            detail: "Cable the main cleanout.",
-            category: .labor,
-            unit: "each",
-            price: 245
-        )
-        let disposalLabor = price(
-            "Disposal install labor",
-            detail: "Swap the unit and test for leaks.",
-            category: .labor,
-            unit: "each",
-            price: 210
-        )
-        let disposalUnit = price(
-            "1/2 HP garbage disposal",
-            detail: "In-stock unit from the truck.",
-            category: .materials,
-            unit: "each",
-            price: 189
-        )
-        [serviceCall, faucetLabor, moen, supplyLines, flush, snake, disposalLabor, disposalUnit]
-            .forEach(context.insert)
 
         let faucetJob = Job(
             title: "Kitchen faucet replacement",
@@ -148,6 +102,7 @@ enum SeedData {
             scheduledAt: clock(on: disposalDate, hour: 11, minute: 0, calendar: calendar),
             address: maria.address,
             notes: "Replaced a seized 1/3 HP unit with a 1/2 HP. Ran both sinks. No leaks.",
+            completedAt: clock(on: disposalDate, hour: 11, minute: 0, calendar: calendar),
             createdAt: days(from: now, -9, calendar: calendar)
         )
         disposalJob.client = maria
@@ -163,9 +118,9 @@ enum SeedData {
         )
         context.insert(faucetQuote)
         faucetQuote.job = faucetJob
-        addLine(faucetLabor, quantity: 1, index: 0, quote: faucetQuote, context: context)
-        addLine(moen, quantity: 1, index: 1, quote: faucetQuote, context: context)
-        addLine(supplyLines, quantity: 1, index: 2, quote: faucetQuote, context: context)
+        addLine(priced("Faucet install labor"), quantity: 1, index: 0, quote: faucetQuote, context: context)
+        addLine(priced("Moen pull-down kitchen faucet"), quantity: 1, index: 1, quote: faucetQuote, context: context)
+        addLine(priced("Braided supply lines"), quantity: 1, index: 2, quote: faucetQuote, context: context)
 
         let disposalQuote = Quote(
             number: "Q-1038",
@@ -176,9 +131,9 @@ enum SeedData {
         )
         context.insert(disposalQuote)
         disposalQuote.job = disposalJob
-        addLine(serviceCall, quantity: 1, index: 0, quote: disposalQuote, context: context)
-        addLine(disposalLabor, quantity: 1, index: 1, quote: disposalQuote, context: context)
-        addLine(disposalUnit, quantity: 1, index: 2, quote: disposalQuote, context: context)
+        addLine(priced("Service call"), quantity: 1, index: 0, quote: disposalQuote, context: context)
+        addLine(priced("Disposal install labor"), quantity: 1, index: 1, quote: disposalQuote, context: context)
+        addLine(priced("1/2 HP garbage disposal"), quantity: 1, index: 2, quote: disposalQuote, context: context)
 
         let issued = disposalDate
         let due = calendar.date(byAdding: .day, value: 3, to: issued) ?? issued
@@ -195,21 +150,40 @@ enum SeedData {
         try? context.save()
     }
 
-    private static func price(
-        _ name: String,
-        detail: String,
-        category: PriceCategory,
-        unit: String,
-        price: Decimal
-    ) -> PriceBookItem {
-        PriceBookItem(
-            name: name,
-            detail: detail,
-            category: category.rawValue,
-            unit: unit,
-            unitPrice: price,
-            taxable: true
-        )
+    private static func loadStarterDemo(_ trade: TradeKit, in context: ModelContext) {
+        let calendar = Calendar.current
+        let now = Date.now
+        TradeKits.makeItems(for: trade).forEach(context.insert)
+        let samples = TradeKits.starterJobs(for: trade)
+        var clientsByName: [String: Client] = [:]
+        for sample in samples {
+            let client: Client
+            if let existing = clientsByName[sample.clientName] {
+                client = existing
+            } else {
+                client = Client(
+                    name: sample.clientName,
+                    phone: sample.phone,
+                    email: "",
+                    address: sample.address,
+                    notes: sample.clientNotes
+                )
+                context.insert(client)
+                clientsByName[sample.clientName] = client
+            }
+            let when = calendar.date(byAdding: .day, value: sample.dayOffset, to: now) ?? now
+            let job = Job(
+                title: sample.title,
+                status: sample.status,
+                scheduledAt: clock(on: when, hour: sample.hour, minute: 0, calendar: calendar),
+                address: sample.address,
+                notes: sample.notes,
+                completedAt: sample.status == .done ? clock(on: when, hour: sample.hour, minute: 0, calendar: calendar) : nil
+            )
+            context.insert(job)
+            job.client = client
+        }
+        try? context.save()
     }
 
     private static func addLine(

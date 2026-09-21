@@ -54,7 +54,19 @@ struct JobsListView: View {
             .navigationTitle("Jobs")
             .searchable(text: $search, prompt: "Title, client, or street")
             .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    NavigationLink {
+                        GlobalSearchView()
+                    } label: {
+                        Image(systemName: "text.magnifyingglass")
+                    }
+                    .accessibilityLabel("Search all")
+                    NavigationLink {
+                        WeekBoardView()
+                    } label: {
+                        Image(systemName: "calendar")
+                    }
+                    .accessibilityLabel("Week")
                     Button {
                         showNew = true
                     } label: {

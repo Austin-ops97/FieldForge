@@ -34,13 +34,13 @@ private struct RootView: View {
 private struct ShopLoadingView: View {
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "wrench.and.screwdriver.fill")
-                .font(.system(size: 44))
-                .foregroundStyle(ForgeTheme.copper)
+            Image(systemName: "wrench.and.screwdriver")
+                .font(.system(size: 40, weight: .medium))
+                .foregroundStyle(ForgeTheme.ink)
             Text("FieldForge")
-                .font(.title2.weight(.bold))
+                .font(ForgeType.section)
             ProgressView()
-                .tint(ForgeTheme.copper)
+                .tint(ForgeTheme.ink)
             Text("Loading the shop on this iPhone")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)

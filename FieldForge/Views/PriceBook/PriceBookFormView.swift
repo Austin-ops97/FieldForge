@@ -54,13 +54,12 @@ struct PriceBookFormView: View {
             }
             .navigationTitle(item == nil ? "New Item" : "Edit Item")
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                FormSaveBar(enabled: canSave, action: save)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(canSave == false)
                 }
             }
             .onAppear(perform: load)

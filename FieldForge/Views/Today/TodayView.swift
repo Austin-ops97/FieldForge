@@ -59,20 +59,17 @@ struct TodayView: View {
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                VStack(alignment: .leading, spacing: ForgeTheme.Space.m) {
                     shopHeader
-                    if overdueInvoices.isEmpty == false {
-                        overdueSection
-                    }
-                    moneyCard
+                    ledgerCard
                     actionRow
-                    jobSection(title: "Today", jobs: todaysJobs, empty: "Nothing on the board today.", actionTitle: "New job")
-                    jobSection(title: "Coming up", jobs: upcomingJobs, empty: "No jobs in the next week.", actionTitle: "New job")
+                    jobSection(title: "On the board", jobs: todaysJobs, empty: "Nothing on the board today.")
+                    jobSection(title: "Coming up", jobs: upcomingJobs, empty: "No jobs in the next week.")
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 28)
+                .padding(.horizontal, ForgeTheme.Space.s)
+                .padding(.bottom, ForgeTheme.Space.l)
             }
-            .background(Color(.systemGroupedBackground))
+            .background(ForgeTheme.canvas)
             .navigationTitle("Today")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -97,31 +94,25 @@ struct TodayView: View {
                     pendingRoute = .quote(quote)
                 }
             }
-            .alert("Sync stub", isPresented: $showSyncNote) {
+            .alert("Sync", isPresented: $showSyncNote) {
                 Button("OK", role: .cancel) {}
             } message: {
-                Text("On-device changes are marked synced. This prototype does not upload them.")
+                Text("Changes on this iPhone are marked synced.")
             }
         }
     }
 
     private var shopHeader: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(shop?.businessName ?? "FieldForge")
-                .font(.title2.weight(.bold))
-            Text(shopLine)
-                .font(.subheadline)
+                .font(.title3.weight(.semibold))
+            Text("\(shopLine) · On this iPhone")
+                .font(ForgeType.secondary)
                 .foregroundStyle(.secondary)
-            Label("Saved on this iPhone", systemImage: "iphone")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(ForgeTheme.navy)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(ForgeTheme.copper.opacity(0.15), in: Capsule())
-                .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 4)
+        .padding(.top, ForgeTheme.Space.xxs)
+        .accessibilityElement(children: .combine)
     }
 
     private var shopLine: String {
@@ -129,52 +120,52 @@ struct TodayView: View {
         return "\(shop.ownerName) · \(shop.trade)"
     }
 
-    private var moneyCard: some View {
-        NavigationLink {
-            MoneyOwedView()
-        } label: {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack {
-                    Text("Money owed")
-                        .font(.subheadline.weight(.semibold))
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.footnote.weight(.bold))
+    private var ledgerCard: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            NavigationLink {
+                MoneyOwedView()
+            } label: {
+                VStack(alignment: .leading, spacing: ForgeTheme.Space.xxs) {
+                    HStack {
+                        Text("Outstanding")
+                            .font(ForgeType.overline)
+                            .textCase(.uppercase)
+                            .tracking(0.6)
+                        Spacer()
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                    }
+                    .foregroundStyle(.white.opacity(0.68))
+                    Text(FieldFormat.money(amountOwed))
+                        .font(ForgeType.heroMoney)
+                        .foregroundStyle(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
+                    Text(openInvoiceCaption)
+                        .font(ForgeType.secondary)
+                        .foregroundStyle(.white.opacity(0.72))
                 }
-                .foregroundStyle(.white.opacity(0.85))
-                Text(FieldFormat.money(amountOwed))
-                    .font(.system(size: 36, weight: .bold, design: .rounded))
-                    .foregroundStyle(.white)
-                Text(openInvoiceCaption)
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.85))
+                .padding(ForgeTheme.Space.s)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .padding(18)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(ForgeTheme.navy, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-            .overlay {
-                if overdueInvoices.isEmpty == false {
-                    RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(ForgeTheme.overdue, lineWidth: 2)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Opens unpaid invoices")
-    }
+            .buttonStyle(ForgePressStyle())
+            .accessibilityHint("Opens unpaid invoices")
 
-    private var overdueSection: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Label("Overdue", systemImage: "exclamationmark.circle.fill")
-                .font(.title3.weight(.bold))
-                .foregroundStyle(ForgeTheme.overdue)
-            ForEach(overdueInvoices) { invoice in
-                NavigationLink(value: invoice.forgeRoute) {
-                    OverdueInvoiceCard(invoice: invoice)
+            if overdueInvoices.isEmpty == false {
+                Rectangle()
+                    .fill(.white.opacity(0.14))
+                    .frame(height: 1)
+                    .padding(.horizontal, ForgeTheme.Space.s)
+                ForEach(overdueInvoices) { invoice in
+                    NavigationLink(value: invoice.forgeRoute) {
+                        OverdueLedgerRow(invoice: invoice)
+                    }
+                    .buttonStyle(ForgePressStyle())
                 }
-                .buttonStyle(.plain)
             }
         }
+        .background(ForgeTheme.ink, in: RoundedRectangle(cornerRadius: ForgeTheme.Radius.l, style: .continuous))
     }
 
     private var openInvoiceCaption: String {
@@ -187,57 +178,57 @@ struct TodayView: View {
     }
 
     private var actionRow: some View {
-        HStack(spacing: 12) {
-            Button {
+        HStack(spacing: ForgeTheme.Space.xs) {
+            QuietActionButton(title: "New Job", systemImage: "plus") {
                 showNewJob = true
-            } label: {
-                actionLabel("New Job", systemImage: "plus")
             }
-            Button {
+            QuietActionButton(title: "New Quote", systemImage: "doc.text") {
                 showNewQuote = true
-            } label: {
-                actionLabel("New Quote", systemImage: "doc.text")
             }
         }
-        .buttonStyle(.plain)
     }
 
-    private func actionLabel(_ title: String, systemImage: String) -> some View {
-        Label(title, systemImage: systemImage)
-            .font(.headline)
-            .frame(maxWidth: .infinity, minHeight: 52)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            .overlay {
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(ForgeTheme.copper.opacity(0.45), lineWidth: 1)
-            }
-    }
-
-    private func jobSection(title: String, jobs: [Job], empty: String, actionTitle: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title)
-                .font(.title3.weight(.bold))
-            if jobs.isEmpty {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(empty)
-                        .font(.subheadline)
+    private func jobSection(title: String, jobs: [Job], empty: String) -> some View {
+        VStack(alignment: .leading, spacing: ForgeTheme.Space.xs) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(ForgeType.section)
+                Spacer()
+                if jobs.isEmpty == false {
+                    Text("\(jobs.count)")
+                        .font(ForgeType.caption)
                         .foregroundStyle(.secondary)
-                    Button(actionTitle) { showNewJob = true }
-                        .buttonStyle(.borderedProminent)
-                        .controlSize(.large)
+                }
+            }
+            if jobs.isEmpty {
+                VStack(alignment: .leading, spacing: ForgeTheme.Space.xs) {
+                    Text(empty)
+                        .font(ForgeType.secondary)
+                        .foregroundStyle(.secondary)
+                    Button("New job") { showNewJob = true }
+                        .font(ForgeType.rowTitle)
+                        .foregroundStyle(ForgeTheme.ink)
+                        .frame(minHeight: 44, alignment: .leading)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(16)
-                .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                .padding(ForgeTheme.Space.s)
+                .forgeCard()
             } else {
-                VStack(spacing: 10) {
-                    ForEach(jobs) { job in
-                        NavigationLink(value: job.forgeRoute) {
-                            TodayJobCard(job: job)
+                VStack(spacing: 0) {
+                    ForEach(Array(jobs.enumerated()), id: \.element.persistentModelID) { index, job in
+                        if index > 0 {
+                            Rectangle()
+                                .fill(ForgeTheme.border)
+                                .frame(height: 1)
+                                .padding(.leading, ForgeTheme.Space.s)
                         }
-                        .buttonStyle(.plain)
+                        NavigationLink(value: job.forgeRoute) {
+                            TodayJobRow(job: job)
+                        }
+                        .buttonStyle(ForgePressStyle())
                     }
                 }
+                .forgeCard()
             }
         }
     }
@@ -259,35 +250,34 @@ private enum TodayRoute {
     case quote(Quote)
 }
 
-private struct TodayJobCard: View {
+private struct TodayJobRow: View {
     let job: Job
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .top, spacing: ForgeTheme.Space.xs) {
             Text(job.scheduledAt.formatted(date: .omitted, time: .shortened))
-                .font(.subheadline.weight(.semibold))
-                .frame(width: 76, alignment: .leading)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
+                .font(.subheadline.weight(.semibold).monospacedDigit())
+                .foregroundStyle(ForgeTheme.ink)
+                .frame(width: 88, alignment: .leading)
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 6) {
                     Text(job.title)
-                        .font(.body.weight(.semibold))
+                        .font(ForgeType.rowTitle)
                         .foregroundStyle(.primary)
+                        .lineLimit(2)
                     if job.needsSync { SyncBadge() }
                 }
                 Text(job.client?.name ?? "No client")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                Text(job.address)
-                    .font(.caption)
+                    .font(ForgeType.secondary)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
+                StatusChip(title: job.status.label, tint: ForgeTheme.jobTint(job.status))
             }
-            Spacer(minLength: 8)
-            StatusChip(title: job.status.label, tint: ForgeTheme.jobTint(job.status))
+            Spacer(minLength: 0)
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .padding(ForgeTheme.Space.s)
+        .frame(maxWidth: .infinity, minHeight: 72, alignment: .leading)
+        .contentShape(Rectangle())
     }
 }
 
@@ -344,12 +334,12 @@ struct MoneyOwedView: View {
 
     private func rowBackground(_ invoice: Invoice) -> Color {
         invoice.displayStatus == .overdue
-            ? ForgeTheme.overdue.opacity(0.14)
+            ? ForgeTheme.overdue.opacity(0.08)
             : Color(.secondarySystemGroupedBackground)
     }
 }
 
-private struct OverdueInvoiceCard: View {
+private struct OverdueLedgerRow: View {
     let invoice: Invoice
 
     private var total: Decimal {
@@ -358,33 +348,37 @@ private struct OverdueInvoiceCard: View {
     }
 
     var body: some View {
-        HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
+        HStack(alignment: .center, spacing: ForgeTheme.Space.xs) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(invoice.number)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(.primary)
+                    .font(ForgeType.rowTitle)
+                    .foregroundStyle(.white)
                 Text(invoice.quote?.job?.client?.name ?? "No client")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(ForgeType.caption)
+                    .foregroundStyle(.white.opacity(0.68))
                 Text("Due \(invoice.dueAt.formatted(date: .abbreviated, time: .omitted))")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(ForgeTheme.overdue)
+                    .font(ForgeType.caption)
+                    .foregroundStyle(.white.opacity(0.68))
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: 6) {
+            Spacer(minLength: 8)
+            VStack(alignment: .trailing, spacing: 2) {
                 Text(FieldFormat.money(total))
-                    .font(.body.weight(.bold))
-                    .foregroundStyle(ForgeTheme.overdue)
-                StatusChip(title: invoice.displayStatus.label, tint: ForgeTheme.invoiceTint(invoice.displayStatus))
+                    .font(ForgeType.rowMoney)
+                    .foregroundStyle(.white)
+                Text("Overdue")
+                    .font(ForgeType.overline)
+                    .foregroundStyle(Color(red: 1, green: 0.74, blue: 0.70))
             }
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.45))
         }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 76, alignment: .leading)
-        .background(ForgeTheme.overdue.opacity(0.12), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(ForgeTheme.overdue.opacity(0.7), lineWidth: 1.5)
-        }
+        .padding(.horizontal, ForgeTheme.Space.s)
+        .padding(.vertical, ForgeTheme.Space.xs)
+        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens invoice")
     }
 }
 
@@ -400,18 +394,19 @@ struct InvoiceRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(invoice.number)
-                    .font(.body.weight(.semibold))
+                    .font(ForgeType.rowTitle)
                 Text(invoice.quote?.job?.client?.name ?? "No client")
-                    .font(.subheadline)
+                    .font(ForgeType.secondary)
                     .foregroundStyle(.secondary)
                 Text("Due \(invoice.dueAt.formatted(date: .abbreviated, time: .omitted))")
-                    .font(invoice.displayStatus == .overdue ? .caption.weight(.bold) : .caption)
+                    .font(invoice.displayStatus == .overdue ? ForgeType.overline : ForgeType.caption)
                     .foregroundStyle(invoice.displayStatus == .overdue ? ForgeTheme.overdue : .secondary)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 6) {
                 Text(FieldFormat.money(total))
-                    .font(.body.weight(.semibold))
+                    .font(ForgeType.rowMoney)
+                    .foregroundStyle(invoice.displayStatus == .overdue ? ForgeTheme.overdue : ForgeTheme.money)
                 StatusChip(title: invoice.displayStatus.label, tint: ForgeTheme.invoiceTint(invoice.displayStatus))
             }
         }

@@ -12,6 +12,6 @@ struct MainTabView: View {
             PriceBookListView()
                 .tabItem { Label("Price Book", systemImage: "book.closed.fill") }
         }
-        .tint(ForgeTheme.copper)
+        .tint(ForgeTheme.accent)
     }
 }

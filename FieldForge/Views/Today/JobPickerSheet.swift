@@ -26,16 +26,14 @@ struct JobPickerSheet: View {
                             onPick(job)
                             dismiss()
                         } label: {
-                            HStack(spacing: 12) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text(job.title)
-                                        .font(.body.weight(.semibold))
-                                        .foregroundStyle(.primary)
-                                    Text(job.client?.name ?? "No client")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(job.title)
+                                    .font(ForgeType.rowTitle)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(2)
+                                Text(job.client?.name ?? "No client")
+                                    .font(ForgeType.secondary)
+                                    .foregroundStyle(.secondary)
                                 StatusChip(title: job.status.label, tint: ForgeTheme.jobTint(job.status))
                             }
                             .frame(maxWidth: .infinity, minHeight: 48, alignment: .leading)

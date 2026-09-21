@@ -70,24 +70,25 @@ private struct ClientRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Text(initials)
-                .font(.headline)
-                .foregroundStyle(ForgeTheme.navy)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
                 .frame(width: 44, height: 44)
-                .background(ForgeTheme.copper.opacity(0.2), in: Circle())
+                .background(Color(.tertiarySystemFill), in: Circle())
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(client.name)
-                        .font(.body.weight(.semibold))
+                        .font(ForgeType.rowTitle)
                     if client.needsSync { SyncBadge() }
                 }
                 Text(client.address)
-                    .font(.subheadline)
+                    .font(ForgeType.secondary)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
             Spacer()
             Text(jobCount)
-                .font(.caption.weight(.semibold))
+                .font(ForgeType.caption)
                 .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)

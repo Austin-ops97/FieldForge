@@ -75,8 +75,8 @@ struct AddLineItemSheet: View {
                                     }
                                     Spacer()
                                     Text(FieldFormat.money(item.unitPrice))
-                                        .font(.body.weight(.semibold))
-                                        .foregroundStyle(.primary)
+                                        .font(ForgeType.rowMoney)
+                                        .foregroundStyle(ForgeTheme.money)
                                 }
                                 .frame(minHeight: 48)
                             }
@@ -141,23 +141,22 @@ private struct CustomLineSheet: View {
             }
             .navigationTitle("Custom line")
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                FormSaveBar(title: "Add", enabled: canSave) {
+                    guard let price else { return }
+                    onSave(
+                        name.trimmingCharacters(in: .whitespacesAndNewlines),
+                        unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "each" : unit,
+                        price,
+                        taxable,
+                        quantity
+                    )
+                    dismiss()
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Add") {
-                        guard let price else { return }
-                        onSave(
-                            name.trimmingCharacters(in: .whitespacesAndNewlines),
-                            unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "each" : unit,
-                            price,
-                            taxable,
-                            quantity
-                        )
-                        dismiss()
-                    }
-                    .disabled(canSave == false)
                 }
             }
         }

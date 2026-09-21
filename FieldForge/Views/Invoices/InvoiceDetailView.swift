@@ -30,7 +30,7 @@ struct InvoiceDetailView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
                         Text(invoice.number)
-                            .font(.title2.weight(.bold))
+                            .font(ForgeType.section)
                         Spacer()
                         StatusChip(
                             title: invoice.displayStatus.label,
@@ -38,8 +38,10 @@ struct InvoiceDetailView: View {
                         )
                     }
                     Text(FieldFormat.money(totals.total))
-                        .font(.system(size: 34, weight: .bold, design: .rounded))
+                        .font(ForgeType.heroMoney)
                         .foregroundStyle(invoiceTotalColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.6)
                     if let paidAt = invoice.paidAt, invoice.status == .paid {
                         Text("Paid \(paidAt.formatted(date: .abbreviated, time: .shortened))")
                             .font(.subheadline)
@@ -92,21 +94,27 @@ struct InvoiceDetailView: View {
                             }
                             Spacer()
                             Text(FieldFormat.money(MoneyMath.lineTotal(unitPrice: item.unitPrice, quantity: item.quantity)))
+                                .font(ForgeType.rowMoney)
+                                .foregroundStyle(ForgeTheme.money)
                         }
                         .padding(.vertical, 4)
                     }
                 }
                 LabeledContent("Subtotal", value: FieldFormat.money(totals.subtotal))
                 LabeledContent("Tax", value: FieldFormat.money(totals.tax))
-                LabeledContent("Total", value: FieldFormat.money(totals.total))
+                LabeledContent("Total") {
+                    Text(FieldFormat.money(totals.total))
+                        .font(ForgeType.money)
+                        .foregroundStyle(invoiceTotalColor)
+                }
             }
 
             Section("Dates") {
                 LabeledContent("Issued", value: invoice.issuedAt.formatted(date: .abbreviated, time: .omitted))
                 LabeledContent("Due", value: invoice.dueAt.formatted(date: .abbreviated, time: .omitted))
                 if invoice.displayStatus == .overdue {
-                    Label("Past due", systemImage: "exclamationmark.circle.fill")
-                        .font(.body.weight(.semibold))
+                    Label("Past due", systemImage: "exclamationmark.circle")
+                        .font(ForgeType.rowTitle)
                         .foregroundStyle(ForgeTheme.overdue)
                         .frame(minHeight: 36, alignment: .leading)
                 }
@@ -140,16 +148,17 @@ struct InvoiceDetailView: View {
                             .padding(.vertical, 14)
                     }
                     .buttonStyle(.borderedProminent)
-                    .buttonBorderShape(.roundedRectangle(radius: 14))
+                    .buttonBorderShape(.roundedRectangle(radius: ForgeTheme.Radius.m))
+                    .tint(ForgeTheme.accent)
                 }
                 Text(invoice.status == .paid ? "Share sends a PDF of this paid invoice." : "Share sends a PDF. Mark paid when the money lands.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 10)
-            .padding(.bottom, 8)
+            .padding(.horizontal, ForgeTheme.Space.s)
+            .padding(.top, ForgeTheme.Space.xs)
+            .padding(.bottom, ForgeTheme.Space.xxs)
             .background(.ultraThinMaterial)
         }
         .pdfShareSheet(url: $shareURL, failed: $shareFailed)

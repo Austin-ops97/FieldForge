@@ -16,15 +16,23 @@ struct ClientDetailView: View {
         client.jobs.sorted { $0.scheduledAt > $1.scheduledAt }
     }
 
+    private var openJobCount: Int {
+        jobs.filter { $0.status != .done }.count
+    }
+
     var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 8) {
                     Text(client.name)
-                        .font(.title2.weight(.bold))
+                        .font(ForgeType.section)
                     Text(client.address)
-                        .font(.body)
+                        .font(ForgeType.secondary)
                         .foregroundStyle(.secondary)
+                    HStack(spacing: ForgeTheme.Space.s) {
+                        metric(title: "Jobs", value: "\(jobs.count)")
+                        metric(title: "Open", value: "\(openJobCount)")
+                    }
                 }
                 .padding(.vertical, 4)
                 contactRow(symbol: "phone.fill", text: client.phone)
@@ -45,14 +53,12 @@ struct ClientDetailView: View {
                         NavigationLink(value: job.forgeRoute) {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(job.title)
-                                    .font(.body.weight(.semibold))
-                                HStack {
-                                    Text(job.scheduledAt.formatted(date: .abbreviated, time: .shortened))
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                    Spacer()
-                                    StatusChip(title: job.status.label, tint: ForgeTheme.jobTint(job.status))
-                                }
+                                    .font(ForgeType.rowTitle)
+                                    .lineLimit(2)
+                                Text(job.scheduledAt.formatted(date: .abbreviated, time: .shortened))
+                                    .font(ForgeType.secondary)
+                                    .foregroundStyle(.secondary)
+                                StatusChip(title: job.status.label, tint: ForgeTheme.jobTint(job.status))
                             }
                             .padding(.vertical, 6)
                         }
@@ -118,6 +124,19 @@ struct ClientDetailView: View {
         } message: {
             Text("Their jobs, quotes, and invoices on this iPhone are removed with them.")
         }
+    }
+
+    private func metric(title: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title.uppercased())
+                .font(ForgeType.overline)
+                .foregroundStyle(.secondary)
+                .tracking(0.4)
+            Text(value)
+                .font(ForgeType.money)
+                .foregroundStyle(ForgeTheme.ink)
+        }
+        .accessibilityElement(children: .combine)
     }
 
     private func contactRow(symbol: String, text: String) -> some View {

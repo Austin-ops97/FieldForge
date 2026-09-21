@@ -38,16 +38,13 @@ struct JobFormView: View {
                         Text("Status")
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(JobStatus.allCases) { item in
-                                    FilterChip(title: item.label, selected: status == item, tint: ForgeTheme.jobTint(item)) {
-                                        status = item
-                                    }
+                        ChipFlow(spacing: 8) {
+                            ForEach(JobStatus.allCases) { item in
+                                FilterChip(title: item.label, selected: status == item, tint: ForgeTheme.jobTint(item)) {
+                                    status = item
                                 }
                             }
                         }
-                        .frame(height: 52)
                     }
                     DatePicker("Scheduled", selection: $scheduledAt)
                 }
@@ -91,13 +88,12 @@ struct JobFormView: View {
             }
             .navigationTitle(job == nil ? "New Job" : "Edit Job")
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                FormSaveBar(enabled: canSave, action: save)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(canSave == false)
                 }
             }
             .onAppear(perform: load)

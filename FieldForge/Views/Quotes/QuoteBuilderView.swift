@@ -26,20 +26,27 @@ struct QuoteBuilderView: View {
     var body: some View {
         List {
             Section {
-                HStack {
+                HStack(alignment: .top, spacing: ForgeTheme.Space.xs) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(quote.number)
-                            .font(.title3.weight(.bold))
+                            .font(ForgeType.section)
                         if let job = quote.job {
                             Text(job.title)
-                                .font(.subheadline)
+                                .font(ForgeType.secondary)
                             Text(job.client?.name ?? "No client")
-                                .font(.subheadline)
+                                .font(ForgeType.secondary)
                                 .foregroundStyle(.secondary)
                         }
                     }
-                    Spacer()
-                    StatusChip(title: quote.status.label, tint: ForgeTheme.quoteTint(quote.status))
+                    Spacer(minLength: 8)
+                    VStack(alignment: .trailing, spacing: 8) {
+                        Text(FieldFormat.money(totals.total))
+                            .font(ForgeType.money)
+                            .foregroundStyle(ForgeTheme.money)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                        StatusChip(title: quote.status.label, tint: ForgeTheme.quoteTint(quote.status))
+                    }
                 }
                 .padding(.vertical, 4)
             }
@@ -90,8 +97,8 @@ struct QuoteBuilderView: View {
                 LabeledContent("Tax", value: FieldFormat.money(totals.tax))
                 LabeledContent("Total") {
                     Text(FieldFormat.money(totals.total))
-                        .font(.title3.weight(.bold))
-                        .foregroundStyle(ForgeTheme.navy)
+                        .font(ForgeType.money)
+                        .foregroundStyle(ForgeTheme.money)
                 }
             }
 
@@ -219,19 +226,20 @@ struct QuoteBuilderView: View {
                             .frame(maxWidth: .infinity, minHeight: 48)
                     }
                     .buttonStyle(.bordered)
-                    .buttonBorderShape(.roundedRectangle(radius: 14))
+                    .buttonBorderShape(.roundedRectangle(radius: ForgeTheme.Radius.m))
+                    .tint(ForgeTheme.ink)
                 }
                 Button {
                     openedInvoice = QuoteActions.accept(quote, in: context)
                     showInvoice = openedInvoice != nil
                 } label: {
-                    Label("Accept quote", systemImage: "checkmark.circle.fill")
+                    Label("Accept quote", systemImage: "checkmark")
                         .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
+                        .frame(maxWidth: .infinity, minHeight: 48)
                 }
                 .buttonStyle(.borderedProminent)
-                .buttonBorderShape(.roundedRectangle(radius: 14))
+                .buttonBorderShape(.roundedRectangle(radius: ForgeTheme.Radius.m))
+                .tint(ForgeTheme.accent)
                 .disabled(items.isEmpty)
                 if items.isEmpty {
                     Text("Add a line item before accepting.")
@@ -243,9 +251,9 @@ struct QuoteBuilderView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 10)
-        .padding(.bottom, 8)
+        .padding(.horizontal, ForgeTheme.Space.s)
+        .padding(.top, ForgeTheme.Space.xs)
+        .padding(.bottom, ForgeTheme.Space.xxs)
         .background(.ultraThinMaterial)
     }
 }
@@ -268,14 +276,15 @@ private struct LineItemRow: View {
                     .foregroundStyle(.secondary)
                 if item.taxable {
                     Text("Taxable")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(ForgeTheme.copper)
+                        .font(ForgeType.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             Spacer(minLength: 8)
             VStack(alignment: .trailing, spacing: 6) {
                 Text(FieldFormat.money(amount))
-                    .font(.body.weight(.semibold))
+                    .font(ForgeType.rowMoney)
+                    .foregroundStyle(ForgeTheme.money)
                 if editable {
                     Stepper("Quantity", value: $item.quantity, in: 1...99)
                         .labelsHidden()

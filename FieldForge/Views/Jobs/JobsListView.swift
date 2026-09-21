@@ -81,11 +81,11 @@ struct JobsListView: View {
     private var filterBar: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                FilterChip(title: "All", selected: statusFilter == nil) {
+                FilterChip(title: "All", selected: statusFilter == nil, tint: ForgeTheme.ink) {
                     statusFilter = nil
                 }
                 ForEach(JobStatus.allCases) { status in
-                    FilterChip(title: status.label, selected: statusFilter == status, tint: ForgeTheme.jobTint(status)) {
+                    FilterChip(title: status.label, selected: statusFilter == status, tint: ForgeTheme.ink) {
                         statusFilter = status
                     }
                 }
@@ -102,19 +102,20 @@ private struct JobListRow: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text(job.title)
-                    .font(.body.weight(.semibold))
+                    .font(ForgeType.rowTitle)
+                    .lineLimit(2)
                 if job.needsSync { SyncBadge() }
-                Spacer()
-                StatusChip(title: job.status.label, tint: ForgeTheme.jobTint(job.status))
             }
             Text(job.client?.name ?? "No client")
-                .font(.subheadline)
+                .font(ForgeType.secondary)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
             Text(job.scheduledAt.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption)
+                .font(ForgeType.caption)
                 .foregroundStyle(.secondary)
+            StatusChip(title: job.status.label, tint: ForgeTheme.jobTint(job.status))
         }
         .padding(.vertical, 6)
     }

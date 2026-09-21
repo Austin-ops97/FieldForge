@@ -124,30 +124,31 @@ private struct PriceBookRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: item.category == PriceCategory.materials.rawValue ? "shippingbox.fill" : "hammer.fill")
-                .font(.body.weight(.semibold))
-                .foregroundStyle(ForgeTheme.copper)
+            Image(systemName: item.category == PriceCategory.materials.rawValue ? "shippingbox" : "hammer")
+                .font(.body.weight(.medium))
+                .foregroundStyle(ForgeTheme.ink)
                 .frame(width: 36, height: 36)
-                .background(ForgeTheme.copper.opacity(0.14), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: ForgeTheme.Radius.s, style: .continuous))
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 HStack {
                     Text(item.name)
-                        .font(.body.weight(.semibold))
+                        .font(ForgeType.rowTitle)
                         .foregroundStyle(.primary)
                     if item.needsSync { SyncBadge() }
                 }
                 Text(item.detail)
-                    .font(.subheadline)
+                    .font(ForgeType.secondary)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
                 Text(item.taxable ? "Taxable · per \(item.unit)" : "Not taxable · per \(item.unit)")
-                    .font(.caption)
+                    .font(ForgeType.caption)
                     .foregroundStyle(.secondary)
             }
             Spacer()
             Text(FieldFormat.money(item.unitPrice))
-                .font(.body.weight(.semibold))
-                .foregroundStyle(.primary)
+                .font(ForgeType.rowMoney)
+                .foregroundStyle(ForgeTheme.money)
         }
         .padding(.vertical, 6)
         .contentShape(Rectangle())

@@ -2,6 +2,8 @@
 
 Field OS for a solo plumber, HVAC tech, electrician, or handyman: client, job, quote, invoice. This repository is a clickable SwiftUI shell for iPhone (iOS 17+). Sample plumbing data lives in SwiftData on the device. Sync and card payments are stubbed. Quote and invoice share builds a one-page PDF and opens the system share sheet.
 
+The visual pass is a quiet business dashboard: shared type, an 8/12/16/20/24 spacing scale, hairline cards, and one ink ledger on Today. Overdue invoices sit inside that card. Status labels stay fully readable. Forms keep a bottom Save bar. Quote and invoice PDFs use a white letterhead (business name, copper rule, line-item table, totals).
+
 ## Open and run
 
 1. Install Xcode 16 or newer.
@@ -24,7 +26,7 @@ This is the path to try first:
 5. Tap **Mark Paid**. The invoice status switches to Paid.
 6. Tap the share button on the quote or the invoice. FieldForge writes a PDF (client, line items, tax, total, status) and presents the share sheet.
 
-**Today** starts with money owed from the seeded disposal invoice (**INV-220**), which is unpaid and past due. The overdue invoice is called out in red on Today. Accepting Q-1042 adds a second open invoice. Marking that new invoice paid leaves INV-220 on the money-owed list.
+**Today** starts with money owed from the seeded disposal invoice (**INV-220**), which is unpaid and past due. That invoice is listed inside the outstanding card. Accepting Q-1042 adds a second open invoice. Marking that new invoice paid leaves INV-220 on the money-owed list.
 
 New job and new quote, without dead ends:
 
@@ -54,7 +56,7 @@ Tax on seeded quotes is 8.25%.
 
 - `FieldForge/Models` — SwiftData models, totals, seed data, quote actions
 - `FieldForge/Views` — Today, Clients, Jobs, Quotes, Invoices, Price Book
-- `FieldForge/Theme` — copper and navy colors
+- `FieldForge/Theme` — ink, accent, type styles, spacing, and card chrome
 
 Tabs are **Today**, **Clients**, **Jobs**, and **Price Book**. Quotes and invoices open from a job or from money owed.
 

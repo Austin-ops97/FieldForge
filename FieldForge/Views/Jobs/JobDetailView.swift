@@ -24,23 +24,21 @@ struct JobDetailView: View {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(job.title)
-                        .font(.title2.weight(.bold))
+                        .font(ForgeType.section)
                     Text(job.scheduledAt.formatted(date: .complete, time: .shortened))
-                        .font(.subheadline)
+                        .font(ForgeType.secondary)
                         .foregroundStyle(.secondary)
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(JobStatus.allCases) { status in
-                            FilterChip(title: status.label, selected: job.status == status, tint: ForgeTheme.jobTint(status)) {
-                                job.status = status
-                                job.needsSync = true
-                            }
+                .padding(.vertical, 4)
+                ChipFlow(spacing: 8) {
+                    ForEach(JobStatus.allCases) { status in
+                        FilterChip(title: status.label, selected: job.status == status, tint: ForgeTheme.jobTint(status)) {
+                            job.status = status
+                            job.needsSync = true
                         }
                     }
-                    .padding(.vertical, 4)
                 }
-                .frame(height: 52)
+                .padding(.vertical, 4)
             }
 
             Section("Client") {
@@ -187,20 +185,16 @@ private struct PhotoCard: View {
     var body: some View {
         VStack(spacing: 8) {
             Image(systemName: photo.symbolName)
-                .font(.title)
-                .foregroundStyle(ForgeTheme.copper)
+                .font(.title2)
+                .foregroundStyle(ForgeTheme.ink)
             Text(photo.caption)
-                .font(.caption.weight(.semibold))
+                .font(ForgeType.caption)
                 .foregroundStyle(.primary)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
         }
         .frame(width: 132, height: 112)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color(.separator), lineWidth: 0.5)
-        }
+        .forgeCard()
     }
 }
 
@@ -212,10 +206,10 @@ private struct PhotoPlaceholderSheet: View {
         NavigationStack {
             VStack(spacing: 18) {
                 Image(systemName: photo.symbolName)
-                    .font(.system(size: 64))
-                    .foregroundStyle(ForgeTheme.copper)
-                    .frame(width: 180, height: 180)
-                    .background(ForgeTheme.copper.opacity(0.12), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+                    .font(.system(size: 56, weight: .medium))
+                    .foregroundStyle(ForgeTheme.ink)
+                    .frame(width: 160, height: 160)
+                    .background(Color(.tertiarySystemFill), in: RoundedRectangle(cornerRadius: ForgeTheme.Radius.l, style: .continuous))
                 Text(photo.caption)
                     .font(.title3.weight(.semibold))
                 Text("Photo placeholder. The full app keeps pictures on the phone and syncs them later.")
@@ -245,8 +239,8 @@ private struct VoiceNoteSheet: View {
         NavigationStack {
             VStack(spacing: 16) {
                 Image(systemName: "waveform")
-                    .font(.system(size: 48))
-                    .foregroundStyle(ForgeTheme.copper)
+                    .font(.system(size: 44, weight: .medium))
+                    .foregroundStyle(ForgeTheme.ink)
                 Text(caption)
                     .font(.headline)
                 Text("Playback is a stub. The note is stored with the job on this iPhone.")
@@ -279,10 +273,10 @@ struct QuoteSummaryRow: View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(quote.number)
-                    .font(.body.weight(.semibold))
+                    .font(ForgeType.rowTitle)
                 Text(FieldFormat.money(total))
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .font(ForgeType.rowMoney)
+                    .foregroundStyle(ForgeTheme.money)
             }
             Spacer()
             StatusChip(title: quote.status.label, tint: ForgeTheme.quoteTint(quote.status))

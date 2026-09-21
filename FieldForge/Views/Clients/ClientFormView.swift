@@ -38,13 +38,12 @@ struct ClientFormView: View {
             }
             .navigationTitle(client == nil ? "New Client" : "Edit Client")
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom) {
+                FormSaveBar(enabled: canSave, action: save)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { save() }
-                        .disabled(canSave == false)
                 }
             }
             .onAppear(perform: load)

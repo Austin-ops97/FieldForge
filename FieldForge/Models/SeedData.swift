@@ -219,20 +219,3 @@ enum SeedData {
         calendar.date(bySettingHour: hour, minute: minute, second: 0, of: date) ?? date
     }
 }
-
-@MainActor
-enum SyncStub {
-    /// Prototype stand-in for the offline queue. Clears the on-device dirty flags.
-    static func markEverythingSynced(in context: ModelContext) {
-        func clear<T: PersistentModel>(_ type: T.Type, update: (T) -> Void) {
-            let rows = (try? context.fetch(FetchDescriptor<T>())) ?? []
-            rows.forEach(update)
-        }
-        clear(Client.self) { $0.needsSync = false }
-        clear(Job.self) { $0.needsSync = false }
-        clear(PriceBookItem.self) { $0.needsSync = false }
-        clear(Quote.self) { $0.needsSync = false }
-        clear(Invoice.self) { $0.needsSync = false }
-        try? context.save()
-    }
-}

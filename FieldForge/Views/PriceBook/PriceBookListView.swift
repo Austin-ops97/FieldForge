@@ -135,7 +135,6 @@ private struct PriceBookRow: View {
                     Text(item.name)
                         .font(ForgeType.rowTitle)
                         .foregroundStyle(.primary)
-                    if item.needsSync { SyncBadge() }
                 }
                 Text(item.detail)
                     .font(ForgeType.secondary)

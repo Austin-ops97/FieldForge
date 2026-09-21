@@ -85,7 +85,6 @@ private struct ClientRow: View {
                 HStack {
                     Text(client.name)
                         .font(ForgeType.rowTitle)
-                    if client.needsSync { SyncBadge() }
                 }
                 Text(client.address)
                     .font(ForgeType.secondary)

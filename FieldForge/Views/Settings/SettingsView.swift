@@ -1,5 +1,6 @@
 import SwiftData
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @Query private var profiles: [BusinessProfile]
@@ -33,7 +34,14 @@ private struct SettingsForm: View {
     @State private var didLoad = false
     @State private var confirmKit = false
     @State private var confirmReset = false
-    @State private var showSync = false
+    @State private var shareURL: URL?
+    @State private var shareFailed = false
+    @State private var showImporter = false
+    @State private var pendingRestore: BackupPreview?
+    @State private var confirmRestore = false
+    @State private var noticeTitle = ""
+    @State private var noticeMessage = ""
+    @State private var showNotice = false
 
     private var canSave: Bool {
         businessName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
@@ -42,6 +50,26 @@ private struct SettingsForm: View {
 
     var body: some View {
         Form {
+            Section {
+                Button {
+                    backupShop()
+                } label: {
+                    Label("Backup", systemImage: "arrow.down.doc")
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }
+                .accessibilityLabel("Backup")
+                Button {
+                    showImporter = true
+                } label: {
+                    Label("Restore", systemImage: "arrow.up.doc")
+                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                }
+                .accessibilityLabel("Restore")
+            } header: {
+                Text("On this iPhone")
+            } footer: {
+                Text("All data stays on this device. There is no account. FieldForge works offline, including in airplane mode. Backup makes one file you can keep in Files. Restore replaces the shop on this iPhone.")
+            }
             Section("Business") {
                 TextField("Company name", text: $businessName)
                 TextField("Your name", text: $ownerName)
@@ -88,17 +116,8 @@ private struct SettingsForm: View {
                     Label("Money reports", systemImage: "chart.bar")
                         .frame(minHeight: 44, alignment: .leading)
                 }
-                Button {
-                    SyncStub.markEverythingSynced(in: context)
-                    showSync = true
-                } label: {
-                    Label("Mark changes synced", systemImage: "checkmark.icloud")
-                        .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                }
             } header: {
                 Text("Shop")
-            } footer: {
-                Text("Sync only clears the on-device waiting marks. Nothing is uploaded.")
             }
             Section {
                 Button("Reset demo data", role: .destructive) {
@@ -108,9 +127,14 @@ private struct SettingsForm: View {
             } footer: {
                 Text("Replaces customers, jobs, quotes, invoices, photos, voice notes, and the price book with the \(trade.label) sample. Your business profile stays.")
             }
+            Section("Privacy") {
+                Text("FieldForge does not send customers, jobs, quotes, invoices, photos, or voice notes anywhere. The camera, microphone, and photo library are used only on this iPhone. A PDF, CSV, or backup leaves the device only when you share it.")
+                    .font(ForgeType.secondary)
+                    .foregroundStyle(.secondary)
+            }
             Section("About") {
                 LabeledContent("Version", value: version)
-                Text("FieldForge keeps this shop on the iPhone. GPS, texting, QuickBooks, and card payments are not part of this build.")
+                Text("No account. No network. GPS, texting, QuickBooks, and card payments are not part of this build.")
                     .font(ForgeType.secondary)
                     .foregroundStyle(.secondary)
             }
@@ -148,11 +172,90 @@ private struct SettingsForm: View {
         } message: {
             Text("Customers, jobs, quotes, invoices, and the price book on this iPhone are replaced with the \(trade.label) sample.")
         }
-        .alert("Sync", isPresented: $showSync) {
+        .confirmationDialog("Replace this shop?", isPresented: $confirmRestore, titleVisibility: .visible) {
+            Button("Replace with backup", role: .destructive) {
+                applyRestore()
+            }
+            Button("Cancel", role: .cancel) {
+                pendingRestore = nil
+            }
+        } message: {
+            Text("This removes the customers, jobs, quotes, invoices, photos, voice notes, and price book on this iPhone, and replaces the business profile. \(pendingRestore?.summary ?? "")")
+        }
+        .alert(noticeTitle, isPresented: $showNotice) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("Changes on this iPhone are marked synced.")
+            Text(noticeMessage)
         }
+        .fileImporter(isPresented: $showImporter, allowedContentTypes: [.zip], allowsMultipleSelection: false) { result in
+            switch result {
+            case .success(let urls):
+                if let url = urls.first {
+                    inspectBackup(url)
+                }
+            case .failure:
+                noticeTitle = "Couldn’t restore"
+                noticeMessage = "That file couldn’t be opened."
+                showNotice = true
+            }
+        }
+        .fileShareSheet(
+            url: $shareURL,
+            failed: $shareFailed,
+            failureTitle: "Couldn’t make the backup",
+            failureMessage: "The shop is still on this iPhone. Try Backup again."
+        )
+    }
+
+    private func backupShop() {
+        do {
+            shareURL = try ShopBackup.makeZip(in: context)
+        } catch {
+            noticeTitle = "Couldn’t make the backup"
+            noticeMessage = error.localizedDescription
+            showNotice = true
+        }
+    }
+
+    private func inspectBackup(_ url: URL) {
+        do {
+            pendingRestore = try ShopBackup.inspect(url)
+            Task { @MainActor in
+                confirmRestore = true
+            }
+        } catch {
+            pendingRestore = nil
+            noticeTitle = "Couldn’t restore"
+            noticeMessage = error.localizedDescription
+            showNotice = true
+        }
+    }
+
+    private func applyRestore() {
+        guard let pendingRestore else { return }
+        do {
+            let report = try ShopBackup.restore(pendingRestore, into: profile, in: context)
+            reloadForm()
+            noticeTitle = "Restored"
+            noticeMessage = report.message
+        } catch {
+            noticeTitle = "Couldn’t restore"
+            noticeMessage = error.localizedDescription
+        }
+        self.pendingRestore = nil
+        showNotice = true
+    }
+
+    private func reloadForm() {
+        businessName = profile.businessName
+        ownerName = profile.ownerName
+        trade = profile.tradeKit
+        phone = profile.phone
+        email = profile.email
+        cityLine = profile.cityLine
+        taxBasisPoints = profile.taxBasisPoints
+        quoteNotes = profile.defaultQuoteNotes
+        terms = profile.defaultInvoiceTerms
     }
 
     private var version: String {

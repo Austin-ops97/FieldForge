@@ -6,15 +6,11 @@ struct TodayView: View {
     @Query private var shops: [BusinessProfile]
     @Query(sort: \Job.scheduledAt) private var jobs: [Job]
     @Query private var invoices: [Invoice]
-    @Query private var clients: [Client]
-    @Query private var quotes: [Quote]
-    @Query private var priceItems: [PriceBookItem]
 
     @State private var path = NavigationPath()
     @State private var showNewJob = false
     @State private var showNewQuote = false
     @State private var pendingRoute: TodayRoute?
-    @State private var showSyncNote = false
 
     private var shop: BusinessProfile? { shops.first }
 
@@ -48,14 +44,6 @@ struct TodayView: View {
         }
     }
 
-    private var pendingSyncCount: Int {
-        clients.filter(\.needsSync).count
-            + jobs.filter(\.needsSync).count
-            + quotes.filter(\.needsSync).count
-            + invoices.filter(\.needsSync).count
-            + priceItems.filter(\.needsSync).count
-    }
-
     var body: some View {
         NavigationStack(path: $path) {
             ScrollView {
@@ -85,13 +73,6 @@ struct TodayView: View {
                         Image(systemName: "gearshape")
                     }
                     .accessibilityLabel("Settings")
-                    Button {
-                        SyncStub.markEverythingSynced(in: context)
-                        showSyncNote = true
-                    } label: {
-                        Image(systemName: pendingSyncCount > 0 ? "icloud.slash" : "checkmark.icloud")
-                    }
-                    .accessibilityLabel("Sync now")
                 }
             }
             .forgeRoutes()
@@ -106,11 +87,6 @@ struct TodayView: View {
                     pendingRoute = .quote(quote)
                 }
             }
-            .alert("Sync", isPresented: $showSyncNote) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text("Changes on this iPhone are marked synced.")
-            }
         }
     }
 
@@ -118,8 +94,11 @@ struct TodayView: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(shop?.businessName ?? "FieldForge")
                 .font(.title3.weight(.semibold))
-            Text("\(shopLine) · On this iPhone")
+            Text("\(shopLine) · On this iPhone only")
                 .font(ForgeType.secondary)
+                .foregroundStyle(.secondary)
+            Text("Works offline. No account.")
+                .font(ForgeType.caption)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -300,12 +279,11 @@ private struct TodayJobRow: View {
                 .frame(width: 88, alignment: .leading)
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    Text(job.title)
-                        .font(ForgeType.rowTitle)
-                        .foregroundStyle(.primary)
-                        .lineLimit(2)
-                    if job.needsSync { SyncBadge() }
-                }
+                        Text(job.title)
+                            .font(ForgeType.rowTitle)
+                            .foregroundStyle(.primary)
+                            .lineLimit(2)
+                    }
                 Text(job.client?.name ?? "No client")
                     .font(ForgeType.secondary)
                     .foregroundStyle(.secondary)

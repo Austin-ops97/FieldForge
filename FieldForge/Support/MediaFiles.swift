@@ -30,6 +30,42 @@ enum MediaFiles {
         }
     }
 
+    @discardableResult
+    static func install(_ data: Data, fileName: String) -> Bool {
+        guard fileName.isEmpty == false else { return false }
+        do {
+            try data.write(to: url(for: fileName), options: .atomic)
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    static func duplicateFolder() -> URL? {
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent("fieldforge-rescue-\(UUID().uuidString)", isDirectory: true)
+        do {
+            try FileManager.default.copyItem(at: directory(), to: destination)
+            return destination
+        } catch {
+            return nil
+        }
+    }
+
+    @discardableResult
+    static func replaceFolder(with source: URL) -> Bool {
+        let destination = directory()
+        do {
+            if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+            }
+            try FileManager.default.copyItem(at: source, to: destination)
+            return true
+        } catch {
+            return false
+        }
+    }
+
     static func remove(_ fileName: String) {
         guard fileName.isEmpty == false else { return }
         try? FileManager.default.removeItem(at: url(for: fileName))

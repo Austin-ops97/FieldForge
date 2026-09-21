@@ -38,11 +38,10 @@ Other stops:
 - **Jobs**: status filters, notes, camera or library photos, voice notes, and **Create quote**.
 - **Price Book**: starter prices for the shop’s trade. Tap a row to edit, or use **+** to add one.
 - Empty lists explain what’s missing and offer a button to add a record or clear the filter.
-- **Sync now** on Today, and **Mark changes synced** in Settings, only clear the on-device “waiting to sync” marks.
 
 ## Foundation pack
 
-- **Settings** (gear on Today): company, owner, trade, tax rate, default quote note, invoice terms, phone, and email. Quote and invoice PDFs use this profile on the letterhead.
+- **Settings** (gear on Today): company, owner, trade, tax rate, default quote note, invoice terms, phone, and email. Quote and invoice PDFs use this profile on the letterhead. **Backup** writes one zip you can keep in Files. **Restore** replaces the shop on this iPhone after a confirm. Settings states that there is no account and the app works offline.
 - **Onboarding** can start from your own trade’s price book, or load sample customers. **Reset demo data** in Settings replaces customers and jobs after a confirm, and leaves the profile in place.
 - **Trade kits**: Plumbing, HVAC, Electrical, and Handyman. Replacing the price book asks first and does not delete jobs.
 - **Search** (magnifying glass on Today, Clients, and Jobs) finds clients, jobs, quote numbers, and invoice numbers.
@@ -72,6 +71,18 @@ Tax on seeded quotes is 8.25%.
 
 Tabs are **Today**, **Clients**, **Jobs**, and **Price Book**. Quotes and invoices open from a job or from money owed.
 
+## Offline
+
+FieldForge does not sign in, sync, or call a server. Customers, jobs, quotes, invoices, photos, and voice notes stay on the iPhone. Airplane mode is a normal way to use it. Sharing a PDF, CSV, or backup is something you start, through the system share sheet.
+
+Backup and restore, on a simulator:
+
+1. Open **Today** and tap the gear.
+2. Tap **Backup**. The share sheet opens a `FieldForge-Backup-YYYY-MM-DD.zip`. Save it to Files.
+3. Change something small, such as a client note, so you can see the restore land.
+4. Tap **Restore**, choose that zip, and confirm **Replace with backup**.
+5. The business name, Maria Chen, Q-1042, and INV-220 are back. A damaged or unrelated file shows an error and leaves the current shop in place.
+
 ## Out of scope
 
-GPS, SMS, QuickBooks, Stripe, Apple Watch, Mac, AI estimates, real sign-in, CloudKit, and StoreKit. The offline mindset is in the model (`needsSync` plus a sync stub), not a server.
+GPS, SMS, QuickBooks, Stripe, Apple Watch, Mac, AI estimates, accounts, and any network service. There is no paywall in the app.

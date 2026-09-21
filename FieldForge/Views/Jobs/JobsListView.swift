@@ -72,7 +72,7 @@ struct JobsListView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel("New job")
+                    .accessibilityLabel("New Job")
                 }
             }
             .forgeRoutes()
@@ -118,7 +118,6 @@ private struct JobListRow: View {
                 Text(job.title)
                     .font(ForgeType.rowTitle)
                     .lineLimit(2)
-                if job.needsSync { SyncBadge() }
             }
             Text(job.client?.name ?? "No client")
                 .font(ForgeType.secondary)

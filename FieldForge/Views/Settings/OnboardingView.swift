@@ -71,7 +71,7 @@ struct OnboardingView: View {
                             .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                     }
                 } footer: {
-                    Text("The Riverside demo is Maria Chen, a draft quote, and an overdue invoice. Your own shop can start empty except for the price book.")
+                    Text("The Riverside demo is Maria Chen, a draft quote, and an overdue invoice. Your own shop can start empty except for the price book. FieldForge works offline. Everything stays on this iPhone.")
                 }
             }
             .navigationTitle("Set up FieldForge")

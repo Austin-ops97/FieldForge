@@ -24,7 +24,7 @@ enum BusinessMigration {
 
 @MainActor
 enum OperationalData {
-    static func removeShopWork(in context: ModelContext) {
+    static func removeShopWork(in context: ModelContext, save: Bool = true) {
         let photos = (try? context.fetch(FetchDescriptor<JobPhoto>())) ?? []
         photos.forEach { MediaFiles.remove($0.fileName) }
         let notes = (try? context.fetch(FetchDescriptor<VoiceNote>())) ?? []
@@ -39,6 +39,8 @@ enum OperationalData {
         clients.forEach(context.delete)
         let prices = (try? context.fetch(FetchDescriptor<PriceBookItem>())) ?? []
         prices.forEach(context.delete)
-        try? context.save()
+        if save {
+            try? context.save()
+        }
     }
 }

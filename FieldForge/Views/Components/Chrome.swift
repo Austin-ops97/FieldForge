@@ -42,15 +42,6 @@ struct FilterChip: View {
     }
 }
 
-struct SyncBadge: View {
-    var body: some View {
-        Image(systemName: "icloud.slash")
-            .font(.caption.weight(.semibold))
-            .foregroundStyle(.secondary)
-            .accessibilityLabel("Waiting to sync")
-    }
-}
-
 struct PrimaryButton: View {
     var title: String
     var systemImage: String

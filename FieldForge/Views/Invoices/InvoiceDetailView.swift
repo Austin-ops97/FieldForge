@@ -51,7 +51,7 @@ struct InvoiceDetailView: View {
 
             Section("Bill to") {
                 if let client = quote?.job?.client {
-                    NavigationLink(value: client) {
+                    NavigationLink(value: client.forgeRoute) {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(client.name)
                                 .font(.body.weight(.semibold))
@@ -63,13 +63,13 @@ struct InvoiceDetailView: View {
                     }
                 }
                 if let job = quote?.job {
-                    NavigationLink(value: job) {
+                    NavigationLink(value: job.forgeRoute) {
                         Label(job.title, systemImage: "wrench.and.screwdriver")
                             .frame(minHeight: 36, alignment: .leading)
                     }
                 }
                 if let quote {
-                    NavigationLink(value: quote) {
+                    NavigationLink(value: quote.forgeRoute) {
                         Label("From \(quote.number)", systemImage: "doc.text")
                             .frame(minHeight: 36, alignment: .leading)
                     }

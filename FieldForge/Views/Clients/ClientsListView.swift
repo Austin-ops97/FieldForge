@@ -37,7 +37,7 @@ struct ClientsListView: View {
                     )
                 } else {
                     List(filtered) { client in
-                        NavigationLink(value: client) {
+                        NavigationLink(value: client.forgeRoute) {
                             ClientRow(client: client)
                         }
                     }

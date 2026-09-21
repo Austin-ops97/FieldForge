@@ -169,7 +169,7 @@ struct TodayView: View {
                 .font(.title3.weight(.bold))
                 .foregroundStyle(ForgeTheme.overdue)
             ForEach(overdueInvoices) { invoice in
-                NavigationLink(value: invoice) {
+                NavigationLink(value: invoice.forgeRoute) {
                     OverdueInvoiceCard(invoice: invoice)
                 }
                 .buttonStyle(.plain)
@@ -232,7 +232,7 @@ struct TodayView: View {
             } else {
                 VStack(spacing: 10) {
                     ForEach(jobs) { job in
-                        NavigationLink(value: job) {
+                        NavigationLink(value: job.forgeRoute) {
                             TodayJobCard(job: job)
                         }
                         .buttonStyle(.plain)
@@ -246,9 +246,9 @@ struct TodayView: View {
         guard let pendingRoute else { return }
         switch pendingRoute {
         case .job(let job):
-            path.append(job)
+            path.append(job.forgeRoute)
         case .quote(let quote):
-            path.append(quote)
+            path.append(quote.forgeRoute)
         }
         self.pendingRoute = nil
     }
@@ -315,7 +315,7 @@ struct MoneyOwedView: View {
                 )
             } else {
                 List(openInvoices) { invoice in
-                    NavigationLink(value: invoice) {
+                    NavigationLink(value: invoice.forgeRoute) {
                         InvoiceRow(invoice: invoice)
                     }
                     .listRowBackground(rowBackground(invoice))

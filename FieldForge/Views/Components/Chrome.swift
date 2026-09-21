@@ -91,17 +91,8 @@ struct EmptyHint: View {
 
 extension View {
     func forgeRoutes() -> some View {
-        navigationDestination(for: Client.self) { client in
-            ClientDetailView(client: client)
-        }
-        .navigationDestination(for: Job.self) { job in
-            JobDetailView(job: job)
-        }
-        .navigationDestination(for: Quote.self) { quote in
-            QuoteBuilderView(quote: quote)
-        }
-        .navigationDestination(for: Invoice.self) { invoice in
-            InvoiceDetailView(invoice: invoice)
+        navigationDestination(for: ForgeRoute.self) { route in
+            ForgeDestination(route: route)
         }
     }
 }

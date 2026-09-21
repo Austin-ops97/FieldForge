@@ -45,7 +45,7 @@ struct JobDetailView: View {
 
             Section("Client") {
                 if let client = job.client {
-                    NavigationLink(value: client) {
+                    NavigationLink(value: client.forgeRoute) {
                         Label(client.name, systemImage: "person.fill")
                             .font(.body.weight(.semibold))
                             .frame(minHeight: 36, alignment: .leading)
@@ -115,12 +115,12 @@ struct JobDetailView: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(quotes) { quote in
-                        NavigationLink(value: quote) {
+                        NavigationLink(value: quote.forgeRoute) {
                             QuoteSummaryRow(quote: quote)
                         }
                     }
                     ForEach(quotes.compactMap { $0.invoice }) { invoice in
-                        NavigationLink(value: invoice) {
+                        NavigationLink(value: invoice.forgeRoute) {
                             HStack {
                                 Label(invoice.number, systemImage: "dollarsign.circle")
                                     .font(.body.weight(.semibold))

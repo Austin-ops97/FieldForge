@@ -43,7 +43,7 @@ struct JobsListView: View {
                         )
                     } else {
                         List(filtered) { job in
-                            NavigationLink(value: job) {
+                            NavigationLink(value: job.forgeRoute) {
                                 JobListRow(job: job)
                             }
                         }
@@ -74,7 +74,7 @@ struct JobsListView: View {
 
     private func openPendingJob() {
         guard let pendingJob else { return }
-        path.append(pendingJob)
+        path.append(pendingJob.forgeRoute)
         self.pendingJob = nil
     }
 

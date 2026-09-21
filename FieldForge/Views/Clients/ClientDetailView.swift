@@ -42,7 +42,7 @@ struct ClientDetailView: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(jobs) { job in
-                        NavigationLink(value: job) {
+                        NavigationLink(value: job.forgeRoute) {
                             VStack(alignment: .leading, spacing: 6) {
                                 Text(job.title)
                                     .font(.body.weight(.semibold))
